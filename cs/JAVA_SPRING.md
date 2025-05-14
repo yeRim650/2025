@@ -957,3 +957,74 @@ Plugin plugin = (Plugin) pluginClass.getDeclaredConstructor().newInstance();
 > 애플리케이션 로직 자체에 남용해서는 안 됩니다.
 </div>
 </details>
+
+### static class와 static method를 비교
+
+<details>
+<summary></summary>
+<div>
+
+## 📘 개념 비교: `static class` vs `static method`
+
+| 항목 | `static class` | `static method` |
+| --- | --- | --- |
+| **정의 위치** | 클래스 안에 중첩(nested)되어 정의 | 클래스 내부의 정적 메서드 |
+| **사용 주체** | **클래스 자체**가 소유 (인스턴스 불필요) | **클래스 이름**으로 직접 호출 가능 |
+| **주로 사용되는 경우** | 유틸리티 클래스나 구조적 데이터 정리 목적 | 헬퍼 함수, 공통 기능 등 |
+| **인스턴스 변수 접근** | 외부 클래스 인스턴스에 접근 불가 | 인스턴스 변수에 접근 불가 |
+| **언제 사용하나?** | 클래스 간 구조적 연결이 필요할 때 | 상태를 가지지 않는 동작(기능)만 구현할 때 |
+
+---
+
+## 🧱 예제 (Java 기준)
+
+### 🔹 `static method` 예시
+
+```java
+public class MathUtils {
+    public static int add(int a, int b) {
+        return a + b;
+    }
+}
+
+// 사용
+int sum = MathUtils.add(3, 5);
+
+```
+
+- 객체 생성 없이 바로 호출 가능
+- 상태를 가지지 않고 입력 → 출력만 존재
+
+---
+
+### 🔹 `static class` 예시
+
+```java
+public class Outer {
+    static class Inner {
+        void print() {
+            System.out.println("Static nested class");
+        }
+    }
+}
+
+// 사용
+Outer.Inner inner = new Outer.Inner();
+inner.print();
+
+```
+
+- 외부 클래스 인스턴스 없이도 내부 클래스 생성 가능
+- 외부 클래스의 **인스턴스 변수에는 접근 불가**
+
+---
+
+## 🧠 정리
+
+| 상황 | 사용 추천 |
+| --- | --- |
+| 기능(행위)만 구현, 상태가 필요 없음 | `static method` |
+| 구조상 클래스 내부에 또 다른 클래스를 정의하고 싶음 | `static class` |
+| 내부 클래스가 외부 클래스 인스턴스 필요 | **비-static class** 사용 |
+</div>
+</details>

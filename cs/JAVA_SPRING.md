@@ -1028,3 +1028,362 @@ inner.print();
 | 내부 클래스가 외부 클래스 인스턴스 필요 | **비-static class** 사용 |
 </div>
 </details>
+
+### Java의 Exception에 대해 설명해 주세요.
+<details>
+<summary></summary>
+<div>
+
+Java에서 `Exception`(예외)은 **프로그램 실행 중 발생할 수 있는 오류 상황을 객체로 표현한 것**입니다. 예외 처리를 통해 프로그램은 **예상치 못한 문제를 중단하지 않고 안정적으로 대응**할 수 있습니다.
+
+---
+
+## ✅ 1. Exception의 분류
+
+Java에서는 `Throwable` 클래스가 **예외 계층의 최상위**입니다. 그 하위로 두 가지 주요 분류가 있습니다:
+
+```
+Throwable
+ ├── Error             // 시스템 오류 (OutOfMemoryError 등 → 처리 불가)
+ └── Exception         // 일반적인 예외 (처리 가능)
+      ├── CheckedException   // 반드시 처리해야 하는 예외
+      └── UncheckedException // 런타임 예외 (선택적 처리)
+
+```
+
+| 유형 | 설명 | 예시 |
+| --- | --- | --- |
+| ✅ Checked Exception | 컴파일 시점에 예외 처리 필요 | `IOException`, `SQLException` |
+| ⚠️ Unchecked Exception (RuntimeException) | 컴파일러가 강제하지 않음 | `NullPointerException`, `IndexOutOfBoundsException` |
+
+---
+
+## ✅ 2. 예외 처리 방법
+
+### 🔹 try-catch-finally
+
+```java
+try {
+    int result = 10 / 0;
+} catch (ArithmeticException e) {
+    System.out.println("0으로 나눌 수 없습니다.");
+} finally {
+    System.out.println("항상 실행됩니다.");
+}
+
+```
+
+### 🔹 throws
+
+메서드 호출자에게 예외 처리를 **위임**할 수 있습니다.
+
+```java
+public void readFile(String path) throws IOException {
+    FileReader fr = new FileReader(path);
+}
+
+```
+
+---
+
+## ✅ 3. 사용자 정의 예외
+
+자신만의 예외를 만들어서 의미 있는 오류를 표현할 수 있습니다.
+
+```java
+public class InvalidUserException extends Exception {
+    public InvalidUserException(String message) {
+        super(message);
+    }
+}
+
+```
+
+사용 시:
+
+```java
+if (!user.isValid()) {
+    throw new InvalidUserException("유효하지 않은 사용자입니다.");
+}
+
+```
+
+---
+
+## ✅ 4. 예외 vs 오류 (Error)
+
+| 항목 | Exception | Error |
+| --- | --- | --- |
+| 목적 | 예외적 상황에 대한 **복구 가능성** 고려 | JVM 내부 오류 등 **복구 불가능** |
+| 예시 | `FileNotFoundException`, `IllegalArgumentException` | `OutOfMemoryError`, `StackOverflowError` |
+| 처리 | try-catch or throws | 보통 처리하지 않음 |
+
+---
+
+## ✅ 5. 실무 팁
+
+- **예외 메시지는 구체적으로**: 로그 분석 시 원인 파악이 쉬움
+- **Exception wrapping**: 다른 계층으로 전달할 때 `throw new CustomException("...", cause)` 형태로 감싸면 stack trace 보존 가능
+- **최대한 구체적인 예외로 catch**: `catch (Exception e)`는 가급적 피함
+- **예외 남용 주의**: 제어 흐름에 예외를 쓰는 건 성능과 가독성에 좋지 않음
+
+---
+
+### 🔚 정리
+
+> Java의 Exception은 안정적인 프로그램 실행을 위한 핵심 도구입니다.
+> 
+> 
+> 적절히 **예외를 구분하고**, **처리 전략을 세우며**, **사용자 정의 예외로 도메인을 표현**하면
+> 
+> 견고하고 유지보수성 높은 코드를 만들 수 있습니다.
+>
+</div>
+</details>
+
+<details>
+<summary>예외처리를 하는 세 방법에 대해 설명해 주세요.</summary>
+<div>
+
+Java에서 예외를 처리하는 **대표적인 3가지 방법**은 다음과 같습니다:
+
+---
+
+### ✅ 1. `try-catch` 문 사용
+
+예외 발생이 예상되는 코드를 `try` 블록에 작성하고, 예외 발생 시 실행할 코드를 `catch` 블록에 작성합니다.
+
+```java
+try {
+    int result = 10 / 0;
+} catch (ArithmeticException e) {
+    System.out.println("예외 발생: " + e.getMessage());
+}
+
+```
+
+- **특징**: 예외를 직접 처리하여 프로그램 중단 없이 흐름을 유지
+- **사용 시점**: 예외가 발생할 수 있는 위치에서 **즉시 처리**해야 할 때
+
+---
+
+### ✅ 2. `throws` 키워드로 위임
+
+메서드 선언부에서 `throws` 키워드를 사용해 예외 처리를 **호출자에게 위임**합니다.
+
+```java
+public void readFile(String path) throws IOException {
+    FileReader fr = new FileReader(path);
+}
+
+```
+
+- **특징**: 호출한 쪽에서 예외를 처리하게 하여 책임을 분리
+- **사용 시점**: 메서드 내부에서 예외 처리하기 적절치 않을 때
+
+---
+
+### ✅ 3. `try-catch-finally` 또는 `try-with-resources`
+
+예외가 발생하든 안 하든 **항상 실행**해야 하는 코드를 `finally`에 작성하거나, 리소스를 안전하게 자동 닫기 위해 `try-with-resources`를 사용합니다.
+
+### ✅ `finally` 예시:
+
+```java
+FileInputStream fis = null;
+try {
+    fis = new FileInputStream("file.txt");
+    // 파일 처리
+} catch (IOException e) {
+    e.printStackTrace();
+} finally {
+    if (fis != null) {
+        try {
+            fis.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+### ✅ `try-with-resources` 예시:
+
+```java
+try (FileInputStream fis = new FileInputStream("file.txt")) {
+    // 파일 처리
+} catch (IOException e) {
+    e.printStackTrace();
+}
+
+```
+
+- **특징**: 자원 정리를 자동으로 하거나, 항상 실행되어야 할 코드를 보장
+- **사용 시점**: 파일, 네트워크 등 **자원 관리**가 필요한 경우
+
+---
+
+### 🔚 요약
+
+| 방법 | 사용 목적 | 사용 시점 |
+| --- | --- | --- |
+| `try-catch` | 예외를 즉시 처리 | 직접 처리 필요할 때 |
+| `throws` | 예외를 위임 | 호출자에게 책임 넘길 때 |
+| `finally` / `try-with-resources` | 리소스 정리 보장 | 파일/DB/네트워크 등 |
+
+---
+
+**💡 실무 팁**: 예외는 무조건 잡기보다는, **의미 있는 위치에서 적절히 처리하거나 위임**하는 게 중요합니다.
+</div>
+</details>
+
+<details>
+<summary>CheckedException, UncheckedException 의 차이에 대해 설명해 주세요.</summary>
+<div>
+
+## ✅ Checked Exception
+
+| 특징 | 내용 |
+| --- | --- |
+| 컴파일 시점 | **컴파일러가 강제로 처리** 요구 (`try-catch` 또는 `throws`) |
+| 상속 관계 | `Exception`을 상속하지만, `RuntimeException`은 **제외** |
+| 예시 | `IOException`, `SQLException`, `ParseException` 등 |
+| 목적 | 예외 처리를 강제해서 **신뢰성** 높이기 위함 |
+
+### ✔ 예:
+
+```java
+public void readFile(String path) throws IOException {
+    FileReader reader = new FileReader(path); // 컴파일 에러 발생 → 예외 처리 필요
+}
+
+```
+
+---
+
+## ✅ Unchecked Exception
+
+| 특징 | 내용 |
+| --- | --- |
+| 컴파일 시점 | **컴파일러가 처리 강제하지 않음** |
+| 상속 관계 | `RuntimeException` 및 그 하위 클래스 |
+| 예시 | `NullPointerException`, `IllegalArgumentException`, `IndexOutOfBoundsException` 등 |
+| 목적 | **프로그래밍 로직 오류** → 개발자가 코드 수정으로 해결해야 함 |
+
+### ✔ 예:
+
+```java
+public int divide(int a, int b) {
+    return a / b; // b가 0이면 ArithmeticException 발생 (언체크드지만 컴파일 통과)
+}
+
+```
+
+---
+
+## ✅ 차이 요약
+
+| 구분 | 체크드 예외 | 언체크드 예외 |
+| --- | --- | --- |
+| 강제 처리 | O (`try-catch` 또는 `throws`) | X |
+| 컴파일러 검사 | O | X |
+| 상속 관계 | `Exception` (단, `RuntimeException` 제외) | `RuntimeException` 및 하위 |
+| 용도 | 외부 문제 (파일, DB 등) | 프로그래밍 실수 |
+| 예 | `IOException`, `SQLException` | `NullPointerException`, `ArrayIndexOutOfBoundsException` |
+
+---
+
+## ✅ 결론
+
+- **체크드 예외**: 발생 가능성이 높고, 회복 가능한 외부 문제
+    
+    → "파일이 없을 수도 있으니 대비하라"는 메시지
+    
+- **언체크드 예외**: 주로 프로그래머 실수 (버그)
+    
+    → "이건 네가 코드 제대로 짜야 한다"는 의미
+    
+
+---
+
+실무에서는 **체크드 예외를 싫어하는 개발자도 많지만**, 외부와의 인터페이스가 많거나 안정성이 중요한 시스템에서는 여전히 유용하게 사용됩니다.
+</div>
+</details>
+
+<details>
+<summary>예외처리가 성능에 큰 영향을 미치나요? 만약 그렇다면, 어떻게 하면 부하를 줄일 수 있을까요?</summary>
+<div>
+
+**Java의 예외 처리(Exception Handling)는 성능에 영향을 미칠 수 있습니다.**
+
+하지만 중요한 건 "예외 발생 자체"가 느린 것이지, "try-catch 구문이 있다고 해서 성능이 떨어지지는 않는다"는 점입니다.
+
+---
+
+## ✅ 예외 처리와 성능 영향
+
+### ✔ 영향이 있는 부분
+
+- **예외가 실제로 발생**할 때 → **스택 트레이스(stack trace)** 생성, **예외 객체 생성**, **컨트롤 흐름 변경** 등으로 CPU 비용이 큽니다.
+- 반복문이나 실시간 처리 코드에서 예외가 **자주 발생**하면 성능 저하가 뚜렷해집니다.
+
+### ✔ 영향이 없는 부분
+
+- 단순히 `try-catch` 구문을 **사용만 했을 때는 성능에 큰 영향 없음**
+    
+    → 예외가 **발생하지 않으면** 거의 비용이 없습니다.
+    
+
+---
+
+## ✅ 부하를 줄이는 방법
+
+| 방법 | 설명 |
+| --- | --- |
+| ❌ 예외를 **흐름 제어 용도로 사용하지 말 것** | 예: `NumberFormatException`을 try-catch로 감싸고 매번 검사하는 대신, `isDigit` 같은 사전 검사를 사용 |
+| ✅ 예외 발생 가능성을 **사전에 방지** | null 체크, 조건문 등으로 예외 발생 조건을 줄임 |
+| ✅ 반복문 내부에서는 특히 주의 | 루프 안에서 예외가 반복 발생하면 성능 저하 큼 |
+| ✅ 필요한 경우 로그 레벨 조절 | 스택 트레이스를 매번 출력하면 I/O 비용도 증가함 |
+| ✅ `try-with-resources` 사용 | 자원 누수를 방지하면서도 깔끔하게 처리 가능 |
+| ✅ 예외 클래스 사용을 최적화 | 자주 발생하는 예외는 커스텀 예외로 만들어 필요한 정보만 담고, 스택 트레이스 생성을 제한하는 방식도 고려 가능 (`fillInStackTrace()` 오버라이딩) |
+
+---
+
+## ✅ 예: 흐름 제어에 예외를 쓰면 안 되는 경우
+
+❌ **안 좋은 예 (예외를 조건 분기처럼 사용)**:
+
+```java
+for (String s : list) {
+    try {
+        int num = Integer.parseInt(s);
+    } catch (NumberFormatException e) {
+        // 무시
+    }
+}
+
+```
+
+✅ **좋은 예 (예외 자체를 사전에 방지)**:
+
+```java
+for (String s : list) {
+    if (s.matches("\\d+")) {
+        int num = Integer.parseInt(s);
+    }
+}
+
+```
+
+---
+
+## ✅ 결론
+
+- 예외 처리는 반드시 필요하지만, **예외 발생을 피하는 설계가 더 중요**합니다.
+- 특히, 예외가 **빈번히 발생하는 구조라면 반드시 리팩토링**을 고려해야 합니다.
+- 실무에서는 예외 발생은 **"정상적이지 않은 흐름"**이라는 점을 기억하세요.
+
+필요하다면 GC, JFR(Java Flight Recorder) 또는 벤치마크 도구로 실측해보는 것도 좋은 접근입니다.
+</div>
+</details>

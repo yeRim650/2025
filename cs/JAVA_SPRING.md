@@ -1387,3 +1387,110 @@ for (String s : list) {
 필요하다면 GC, JFR(Java Flight Recorder) 또는 벤치마크 도구로 실측해보는 것도 좋은 접근입니다.
 </div>
 </details>
+
+### Synchronized 키워드에 대해 설명해 주세요.
+<details>
+<summary></summary>
+<div>
+
+자바의 `synchronized` 키워드는 **동시성 환경에서 공유 자원에 대한 상호 배제를 보장**하기 위해 사용됩니다. 크게 두 가지 용도로 나뉩니다.
+
+---
+
+## 1. 메서드 동기화 (Method Synchronization)
+
+```java
+public synchronized void increment() {
+    counter++;
+}
+```
+
+* **대상:** 인스턴스 메서드에 붙이면 해당 객체의 **인스턴스 락**(intrinsic lock, 모니터)을 획득합니다.
+* **동작:** 한 스레드가 이 메서드를 호출해 락을 획득하면, 같은 객체의 다른 `synchronized` 메서드는 락이 풀릴 때까지 진입 대기합니다.
+* **static 메서드 동기화:** `public static synchronized void foo()` 형태로 쓰면 **클래스 객체**(`Class<?>` 인스턴스)에 대한 락을 사용합니다.
+
+---
+
+## 2. 블록 동기화 (Block Synchronization)
+
+```java
+public void transfer(Account from, Account to, int amount) {
+    // from 객체의 락만 걸기
+    synchronized (from) {
+        // critical section: from.balance 변경
+        from.withdraw(amount);
+    }
+    // to 객체의 락만 걸기
+    synchronized (to) {
+        to.deposit(amount);
+    }
+}
+```
+
+* **유연성:** 메서드 전체가 아니라 필요한 코드 영역만 동기화할 수 있어, 락 경합(lock contention)을 줄이고 성능을 개선할 수 있습니다.
+* **임의 객체 락:** `synchronized(this)`, `synchronized(SomeClass.class)`, 또는 임의의 `new Object()` 등 어떤 객체도 모니터로 사용 가능합니다.
+
+---
+
+## 3. 동작 원리
+
+1. **모니터 엔터(Monitor Enter):** 동기화 지점(`synchronized`) 도달 시 JVM이 해당 객체의 모니터 락을 획득하려 시도합니다.
+2. **블록 실행:** 락 획득 성공 스레드는 블록(또는 메서드) 내부를 실행합니다.
+3. **모니터 엑시트(Monitor Exit):** 블록 종료(정상/예외) 시 JVM이 락을 해제합니다.
+
+JVM은 `monitorenter` / `monitorexit` 바이트코드로 이를 구현하며, 락 해제는 `finally` 블록처럼 보장됩니다.
+
+---
+
+## 4. 재진입성 (Reentrancy)
+
+* 자바의 락은 **재진입 가능(Reentrant)** 합니다.
+* 같은 스레드가 이미 획득한 락을 다시 얻으려고 해도 데드락 없이 획득 카운트만 올라갑니다.
+* 예시:
+
+  ```java
+  public synchronized void outer() {
+      inner();  // 같은 객체의 synchronized 메서드 호출
+  }
+
+  public synchronized void inner() {
+      // outer()에서 획득한 락을 그대로 사용
+  }
+  ```
+
+---
+
+## 5. 주의할 점
+
+1. **과도한 동기화 범위**
+
+   * 메서드 전체를 `synchronized`로 걸면, 불필요하게 성능 병목이 생길 수 있습니다.
+   * 가능한 한 **최소 영역**만 동기화하세요.
+
+2. **교착 상태(Deadlock)**
+
+   * 다중 락을 취할 때 순서를 헷갈리면 데드락이 발생합니다.
+   * 락 취득 순서를 일관되게 관리하거나, 타임아웃을 검토하세요.
+
+3. **락 경합(Lock Contention)과 성능**
+
+   * 락 걸린 코드가 길면 많은 스레드가 대기하면서 전체 처리량이 떨어집니다.
+   * `java.util.concurrent.locks` 패키지의 `ReentrantLock`·`ReadWriteLock`·`StampedLock` 등의 고급 락을 고려해 보세요.
+
+---
+
+## 6. 대안: java.util.concurrent
+
+* **`ReentrantLock`**: 락 획득 대기 중 인터럽트 가능, 타임아웃, 공정성 옵션 제공
+* **`ReadWriteLock`**: 읽기-쓰기 횟수 분리 → 읽기 락은 동시 다중 허용, 쓰기 락은 배타적
+* **`StampedLock`**: 낙관적 읽기(optimistic read) 지원으로 성능 향상
+
+---
+
+### 요약
+
+* `synchronized`는 **자바 기본 동기화 메커니즘**으로, 간단히 “메서드 전체” 또는 “블록 일부”에 락을 걸어 스레드 안전(thread safety)을 확보합니다.
+* **재진입 가능**하고 JVM 레벨에서 자동으로 락 관리(`monitorenter`/`monitorexit`)를 해 주지만, **성능 병목**과 **데드락** 위험이 있으므로 락 범위 최소화, 교착 회피 전략, 필요 시 `java.util.concurrent` 고급 락 활용이 필요합니다.
+
+</div>
+</details>

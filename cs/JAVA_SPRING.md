@@ -1494,3 +1494,352 @@ JVM은 `monitorenter` / `monitorexit` 바이트코드로 이를 구현하며, �
 
 </div>
 </details>
+
+<details>
+<summary>Synchronized 키워드가 어디에 붙는지에 따라 의미가 약간씩 변화하는데, 각각 어떤 의미를 갖게 되는지</summary>
+<div>
+
+Java의 `synchronized` 키워드는 “어떤 락(lock)에 걸어 동기화할 것인가”를 지정하는 역할을 합니다. 붙이는 위치에 따라 잡는 락의 종류와 범위가 달라지고, 따라서 의미와 동작 방식도 약간씩 달라집니다. 크게 네 가지 경우로 나눌 수 있습니다.
+
+---
+
+## 1. 인스턴스 메서드에 붙일 때
+
+```java
+public synchronized void foo() { … }
+
+```
+
+- **잡는 락**: 이 메서드를 호출한 *인스턴스 객체(this)* 의 모니터 락
+- **동작 범위**: 해당 객체의 다른 `synchronized` 인스턴스 메서드들과 상호 배제(Mutex)
+- **의미**:
+    - 스레드 A가 `obj.foo()` 진입 시 `obj`의 락을 획득
+    - 락을 해제하기 전까지 `obj`의 다른 synchronized 인스턴스 메서드 진입(예: `obj.bar()`)은 블록됨
+    - 다른 인스턴스(`obj2`)의 synchronized 메서드는 영향 없음
+
+---
+
+## 2. 정적(static) 메서드에 붙일 때
+
+```java
+public static synchronized void bar() { … }
+
+```
+
+- **잡는 락**: 해당 클래스의 `Class` 객체 메타 모니터(예: `MyClass.class`)
+- **동작 범위**: 같은 클래스에 선언된 *모든* static `synchronized` 메서드들끼리 상호 배제
+- **의미**:
+    - 스레드 A가 `MyClass.bar()` 진입 시 `MyClass.class` 락 획득
+    - 해제 전까지 `MyClass` 내 다른 모든 static synchronized 메서드 진입은 블록됨
+    - 인스턴스 메서드의 synchronized와는 완전히 독립된 락
+
+---
+
+## 3. 인스턴스 단위의 블록 동기화
+
+```java
+synchronized(this) {
+    // critical section
+}
+
+```
+
+- **잡는 락**: `this` 객체의 모니터 락 (인스턴스 메서드 synchronized와 동일)
+- **동작 범위**: 블록 `{}` 안에서만 동기화 적용
+- **의미**:
+    - 더 세밀한 영역(critical section)만 묶어서 락을 걸고 싶을 때 사용
+    - 필요하다면 특정 필드를 가진 객체를 락 대상으로 지정할 수도 있음
+        
+        ```java
+        synchronized(someSharedObject) { … }
+        
+        ```
+        
+
+---
+
+## 4. 클래스 단위의 블록 동기화
+
+```java
+synchronized(MyClass.class) {
+    // critical section for class-wide lock
+}
+
+```
+
+- **잡는 락**: `MyClass.class` 객체의 모니터 락 (static synchronized와 동일)
+- **동작 범위**: 해당 블록 안에서만 적용
+- **의미**:
+    - static 메서드 synchronized보다 더 작은 영역만 클래스 단위 락을 걸고 싶을 때
+    - 클래스 전체(static) 리소스 접근 시 사용
+
+---
+
+### 요약 비교
+
+| 위치 | 잡는 락 대상 | 적용 범위 |
+| --- | --- | --- |
+| `synchronized void m()` | `this` | 해당 인스턴스의 모든 synchronized 인스턴스 메서드 |
+| `static synchronized void m()` | `MyClass.class` | 해당 클래스의 모든 static synchronized 메서드 |
+| `synchronized(this){…}` | `this` | 블록 내부 |
+| `synchronized(obj){…}` | `obj` | 블록 내부 |
+| `synchronized(MyClass.class){…}` | `MyClass.class` | 블록 내부 |
+
+각각 “어떤 락”을 걸 것인지(인스턴스 vs 클래스, 메서드 전체 vs 특정 블록)와 “동기화 대상”이 달라진다고 이해하시면 됩니다.
+</div>
+</details>
+
+<details>
+<summary>호율적인 코드 작성 측면에서, Synchronized는 좋은 키워드일까</summary>
+<div>
+
+`synchronized` 키워드는 자바에서 가장 기본적인 동기화 수단으로, 사용법이 직관적이고 JVM 수준에서 락 관리(바이어스 락, 경량 락 등) 최적화가 이루어지기 때문에 “무조건 나쁘다”고 할 수는 없습니다. 다만 **효율적인(throughput이 높고 지연(latency)이 낮은) 코드**를 작성하려면 몇 가지 고려할 점이 있습니다.
+
+---
+
+## 장점
+
+1. **간단하고 직관적**
+    - 메서드 선언부나 블록 앞에 붙이기만 하면 되므로, 복잡한 락 획득/해제 코드를 직접 작성할 필요가 없습니다.
+2. **JVM 최적화**
+    - 자바 6 이후로 바이어스 락(Biased Locking), 경량 락(Lightweight Locking), 헤비급 락(Heavyweight Locking) 사이 자동 전환이 일어나 락 획득/해제 오버헤드를 줄여 줍니다.
+
+---
+
+## 단점 및 한계
+
+1. **컨텐션(Contention)에 취약**
+    - 여러 스레드가 동일 락을 경쟁할 때 모니터 진입 대기(queue)가 길어져 전체 처리량이 급격히 떨어질 수 있습니다.
+2. **범위 관리가 어렵다**
+    - 메서드 전체를 락으로 걸면 사실상 “하나의 작업 단위”가 되는 코드가 길어져서, 실제로는 동기화가 필요 없는 코드까지 묶이기 쉽습니다.
+3. **대체 수단에 비해 유연성 부족**
+    - `ReadWriteLock`, `StampedLock`, `Lock` 인터페이스, 원자 클래스(`AtomicInteger` 등)에 비해 읽기·쓰기 분리, 타임아웃 락 대기, 공정성(fairness) 설정 등의 고급 기능을 지원하지 않습니다.
+
+---
+
+## 효율적인 대안 및 권장 사용법
+
+1. **최소한의 범위만 동기화**
+    
+    ```java
+    // Bad: 메서드 전체
+    public synchronized void addData(Data d) {
+        // 데이터 변환 + I/O + 리스트 추가
+    }
+    
+    // Good: 실제 공유자원 접근부만
+    public void addData(Data d) {
+        Data transformed = transform(d);
+        ioOperation(transformed);
+        synchronized(list) {
+            list.add(transformed);
+        }
+    }
+    
+    ```
+    
+2. **java.util.concurrent 활용**
+    - **`ConcurrentHashMap`, `CopyOnWriteArrayList`** 등 락 분할(sharding)된 컬렉션
+    - **`ReentrantLock`**: tryLock, 타임아웃, 공정성 설정 가능
+    - **`ReadWriteLock`**: 읽기 작업이 많고, 쓰기는 상대적으로 적을 때 유리
+    - **`StampedLock`**: 낙관적 락(optimistic read)을 지원해 읽기 성능 극대화
+3. **원자성 보장 클래스**
+    - `AtomicInteger`, `AtomicReference`, `LongAdder` 등으로 단일 값 동기화
+4. **불변 객체(Immutable Objects)**
+    - 불변 객체는 아예 동기화가 필요 없으므로, 설계 단계에서 가능한 한 활용
+
+---
+
+## 결론
+
+- **소규모 프로젝트나 간단한 동기화**: `synchronized` 만으로도 충분히 관리·유지보수가 쉽고 안전합니다.
+- **높은 동시성·고성능이 요구되는 영역**: 컨텐션 감소, 세밀한 락 제어, 공정성·타임아웃 등의 기능이 필요한 경우 `java.util.concurrent` 패키지의 고급 락/컬렉션을 적극 활용하는 것이 좋습니다.
+
+따라서 “synchronized가 무조건 나쁘다”기보다는, **적절한 상황**에서 **최소 범위**로 사용하고, **성능 병목**이 예상되면 더 유연한 동시성 도구로 대체하는 것이 **효율적인 코드 작성**의 핵심입니다.
+</div>
+</details>
+
+<details>
+<summary>Synchronized를 대체할 수 있는 자바의 다른 동기화 기번에 대해 설명</summary>
+<div>
+
+Java의 `synchronized`를 대체하거나 보완할 수 있는 주요 동기화(Concurrency) 기법 및 도구들을 정리하면 다음과 같습니다.
+
+---
+
+## 1. `java.util.concurrent.locks` 패키지
+
+### 1.1 `ReentrantLock`
+
+- **특징**
+    - `synchronized`보다 세밀한 락 제어 가능 (tryLock, lockInterruptibly, 공정성(fairness) 옵션)
+    - 락 획득 실패 시 즉시 돌아오는 `tryLock()` 제공
+    - 블록 해제 시 반드시 `unlock()` 호출 필요 (finally 블록에서 해제 권장)
+- **사용 예**
+    
+    ```java
+    private final ReentrantLock lock = new ReentrantLock(true); // fair lock
+    
+    public void critical() {
+        if (lock.tryLock()) {
+            try {
+                // 공유 자원 접근
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            // 락 획득 실패 시 대체 로직
+        }
+    }
+    
+    ```
+    
+
+### 1.2 `ReadWriteLock` / `ReentrantReadWriteLock`
+
+- **특징**
+    - 읽기(Read) 락과 쓰기(Write) 락을 분리
+    - **다중 읽기**는 동시에 허용(read lock 공유), 쓰기 작업 시에는 단독 락(write lock)
+    - 읽기 위주의 워크로드에서 성능 향상
+- **사용 예**
+    
+    ```java
+    private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Lock readLock = rwLock.readLock();
+    private final Lock writeLock = rwLock.writeLock();
+    
+    public void read() {
+        readLock.lock();
+        try {
+            // 읽기 전용 작업
+        } finally {
+            readLock.unlock();
+        }
+    }
+    
+    public void write() {
+        writeLock.lock();
+        try {
+            // 쓰기 전용 작업
+        } finally {
+            writeLock.unlock();
+        }
+    }
+    
+    ```
+    
+
+### 1.3 `StampedLock`
+
+- **특징**
+    - `ReadWriteLock`과 유사하나, **낙관적 읽기(optimistic read)** 지원
+    - 잠금 획득 없이도 먼저 읽기를 시도, 충돌 감지 후 필요 시 재시도
+    - 읽기 성능 극대화
+- **사용 예**
+    
+    ```java
+    private final StampedLock sl = new StampedLock();
+    private long data;
+    
+    public long optimisticRead() {
+        long stamp = sl.tryOptimisticRead();
+        long result = data;
+        if (!sl.validate(stamp)) {
+            stamp = sl.readLock();
+            try {
+                result = data;
+            } finally {
+                sl.unlockRead(stamp);
+            }
+        }
+        return result;
+    }
+    
+    public void write(long update) {
+        long stamp = sl.writeLock();
+        try {
+            data = update;
+        } finally {
+            sl.unlockWrite(stamp);
+        }
+    }
+    
+    ```
+    
+
+---
+
+## 2. 원자성(Atomic) 클래스
+
+### 2.1 `java.util.concurrent.atomic` 패키지
+
+- **주요 클래스**: `AtomicInteger`, `AtomicLong`, `AtomicReference`, `LongAdder`, `DoubleAccumulator` 등
+- **특징**
+    - CAS(Compare-And-Swap) 기반으로 락 없이 원자적 연산 보장
+    - 단일 변수의 증가·감소, 비교 후 교체 등을 높은 성능으로 처리
+- **사용 예**
+    
+    ```java
+    private final AtomicInteger counter = new AtomicInteger(0);
+    
+    public void increment() {
+        counter.incrementAndGet();
+    }
+    
+    public boolean compareAndSetExample(int expect, int update) {
+        return counter.compareAndSet(expect, update);
+    }
+    
+    ```
+    
+
+---
+
+## 3. 동시성 컬렉션
+
+- **`ConcurrentHashMap`**
+    - 내부적으로 세그먼트/버킷 단위 락 분할(sharding)
+    - `synchronized` Map 대비 훨씬 높은 동시성 처리
+- **`CopyOnWriteArrayList` / `CopyOnWriteArraySet`**
+    - 쓰기 시 배열 전체를 복사하므로 읽기 위주 상황에 적합
+    - iteration 중 안전하게 읽기 가능
+- **`BlockingQueue` 계열** (`ArrayBlockingQueue`, `LinkedBlockingQueue`, `PriorityBlockingQueue` 등)
+    - 생산자-소비자 패턴에서 대기(blocking)와 용량(capacity) 제어
+
+---
+
+## 4. 동기화 보조 도구들 (`java.util.concurrent`)
+
+| 도구 | 용도 |
+| --- | --- |
+| `Semaphore` | 지정된 허용 개수만큼 동시 진입 허용 (리소스 풀 등) |
+| `CountDownLatch` | N개의 이벤트(스레드)가 완료될 때까지 대기 |
+| `CyclicBarrier` | 정해진 개수의 스레드가 모두 도달할 때까지 대기 → 동시에 출발(start) |
+| `Phaser` | 재사용 가능한 barrier, dynamic한 파티션 크기 조정 가능 |
+| `Exchanger` | 두 스레드 간 데이터 교환 |
+
+---
+
+## 5. 불변 객체(Immutable Objects)와 함수형 스타일
+
+- **불변 객체**는 설계 단계에서 상태 변경을 제거하여 락 자체가 불필요
+- Java의 `record`, `final` 필드, 라이브러리(Guava의 `ImmutableList` 등)를 활용
+- 부작용(side-effect)을 최소화하는 함수형 프로그래밍 패턴 도입
+
+---
+
+## 정리
+
+| 기법 | 장점 | 단점 |
+| --- | --- | --- |
+| `synchronized` | 간단·직관, JVM 최적화 내장 | 세밀한 제어 부족, 블록 범위 관리 어려움 |
+| `ReentrantLock` | 공정성, 인터럽트 가능한 락, tryLock 등 세밀 제어 | finally 블록 해제 코딩 필요 |
+| `ReadWriteLock` | 읽기/쓰기 분리 → 읽기 성능 향상 | 구현 복잡도 약간 증가 |
+| `StampedLock` | 낙관적 읽기 지원 → 더 높은 읽기 처리량 | validate 후 재시도 로직 필요 |
+| `AtomicXxx` | 락 없는 원자 연산 → 높은 성능 | 단일 변수 수준, 복합 연산에선 부적합 |
+| 동시성 컬렉션·동기화 보조 도구 | 생산자-소비자, 배리어 등 고수준 동시성 패턴 지원 | 쓰기 비용, 용도별 학습 필요 |
+| 불변 객체 | 아예 동기화 불필요 | 설계 복잡도 증가, 객체 생성 비용 |
+
+애플리케이션의 **요구사항**(읽기/쓰기 비율, 지연 허용치, 공정성 여부 등)에 따라 위 도구들을 적절히 조합·선택하시면 `synchronized`만 사용할 때보다 **성능**과 **유연성** 모두 개선할 수 있습니다.
+</div>
+</details>

@@ -1843,3 +1843,116 @@ Java의 `synchronized`를 대체하거나 보완할 수 있는 주요 동기화(
 애플리케이션의 **요구사항**(읽기/쓰기 비율, 지연 허용치, 공정성 여부 등)에 따라 위 도구들을 적절히 조합·선택하시면 `synchronized`만 사용할 때보다 **성능**과 **유연성** 모두 개선할 수 있습니다.
 </div>
 </details>
+
+<details>
+<summary>Thread Local에 대해 설명해 주세요.</summary>
+<div>
+
+### 1. Thread-Local Storage(스레드 로컬 저장소)란?
+
+- **정의**
+    
+    하나의 프로세스 안에 여러 스레드가 있을 때, 스레드마다 **고유하게** 값을 보관할 수 있는 메모리 영역입니다.
+    
+- **필요성**
+    - 전역 변수처럼 값을 공유하는 대신, 각 스레드가 독립적인 상태를 유지해야 할 때
+    - 동시성(concurrency) 상황에서 **잠금(lock)** 없이 스레드 안전(thread-safe)한 데이터를 관리할 때
+
+---
+
+### 2. Java 의 `ThreadLocal<T>`
+
+### 2.1. 기본 사용법
+
+```java
+// 1) ThreadLocal 객체 생성
+private static final ThreadLocal<SimpleDateFormat> dateFormat =
+    ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
+
+// 2) 각 스레드에서 값 읽기/쓰기
+public void someMethod() {
+    // 현재 스레드 전용 SimpleDateFormat 인스턴스를 꺼내서 사용
+    String today = dateFormat.get().format(new Date());
+    // 필요 시 set() 으로 값을 교체할 수도 있음
+    dateFormat.set(new SimpleDateFormat("MM/dd/yyyy"));
+}
+
+```
+
+- **`withInitial(...)`**
+    
+    각 스레드가 처음 `get()`을 호출할 때 실행되어 초기값을 만든다.
+    
+- **`get()` / `set(T)` / `remove()`**
+    - `get()`: 현재 스레드에 바인딩된 값을 가져온다.
+    - `set(...)`: 값을 새로 바인딩한다.
+    - `remove()`: 스레드 로컬에서 해당 스레드의 값을 제거(메모리 누수 방지 권장).
+
+### 2.2. 장점
+
+- 별도 동기화 없이 스레드마다 독립 객체 사용 → **성능** 향상
+- 라이브러리 설계 시, 파라미터 전달 없이도 “문맥(context)” 정보 공유 가능
+
+### 2.3. 주의사항
+
+1. **메모리 누수**
+    - 스레드 풀(Executor)처럼 장시간 살아 있는 스레드가 `remove()` 없이 계속 재사용되면, ThreadLocalMap 에 쌓인 값들이 GC 대상이 안 되어 메모리 누수가 발생할 수 있음.
+    - **해결**: 사용이 끝난 후 `threadLocal.remove()` 호출
+2. **과도한 사용 지양**
+    - 남발하면 코드 가독성 저하, 디버깅 어려움
+    - 가능하면 명시적인 파라미터 전달이나 컨텍스트 객체 사용 고려
+
+---
+
+### 3. C/C++11 의 `thread_local` 키워드
+
+```cpp
+#include <iostream>
+#include <thread>
+
+thread_local int counter = 0;
+
+void worker() {
+    ++counter;
+    std::cout << "Thread " << std::this_thread::get_id()
+              << " counter = " << counter << "\n";
+}
+
+int main() {
+    std::thread t1(worker), t2(worker), t3(worker);
+    t1.join(); t2.join(); t3.join();
+    return 0;
+}
+
+```
+
+- **동작**
+    - 각 스레드는 독립적인 `counter` 를 갖는다.
+    - `worker()` 를 호출할 때마다 스레드마다 `counter` 가 1로 증가하여 출력됨.
+- **장점**
+    - 선언만으로 스레드 로컬 저장소 확보 → 사용이 간편
+    - JVM 기반이 아니어도, 네이티브 코드에서 스레드별 상태 관리 가능
+
+---
+
+### 4. 사용 사례 및 응용
+
+| 상황 | 예시 |
+| --- | --- |
+| 날짜/시간 포맷터처럼 **상태 비저장(stateless) 불가** 객체 | `SimpleDateFormat`, `DateTimeFormatter` 재사용 시 동시성 문제 회피 |
+| **트랜잭션 컨텍스트** 저장 | 데이터베이스 트랜잭션 ID, 세션 정보 등을 스레드 전용으로 관리 |
+| **로깅Context** | 요청 ID, 사용자 ID 등을 로깅 패턴에 자동 삽입 |
+
+---
+
+### 5. 요약
+
+1. **Thread-Local** 은 “스레드마다 독립된 변수”를 제공하는 메커니즘
+2. Java 에서는 `ThreadLocal<T>` 클래스로, C++11 이상에서는 `thread_local` 키워드로 지원
+3. 동기화 없이 스레드 안전한 상태 관리에 유용하지만, **메모리 누수**나 **과도한 의존**은 주의
+
+---
+
+혹시 더 궁금한 부분이나, 특정 언어·프레임워크에서의 활용 예시가 필요하시면 알려주세요!
+</div>
+</details>

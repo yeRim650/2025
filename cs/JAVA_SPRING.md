@@ -1956,3 +1956,257 @@ int main() {
 혹시 더 궁금한 부분이나, 특정 언어·프레임워크에서의 활용 예시가 필요하시면 알려주세요!
 </div>
 </details>
+
+### Java Stream에 대해 설명해주세요.
+
+<details>
+<summary></summary>
+<div>
+
+Java Stream은 Java 8에서 도입된 기능으로, **컬렉션(리스트, 맵 등)의 데이터를 함수형 스타일로 처리할 수 있는 API**입니다. 즉, 데이터를 하나하나 반복하며 처리하는 전통적인 방식(for-each 등) 대신, **선언적이고 간결하게 데이터 처리 로직을 작성**할 수 있도록 도와줍니다.
+
+---
+
+## 🔹 핵심 개념
+
+### 1. **Stream이란?**
+
+- 데이터의 흐름(연속된 데이터 요소)
+- 원본 데이터를 변경하지 않음 (비파괴적)
+- 한 번만 소비 가능 (재사용 불가)
+
+---
+
+## 🔹 기본 구조
+
+```java
+List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
+
+names.stream()
+     .filter(name -> name.startsWith("A"))
+     .map(String::toUpperCase)
+     .forEach(System.out::println);
+
+```
+
+### 위 코드는:
+
+1. `stream()` - 리스트로부터 스트림 생성
+2. `filter()` - "A"로 시작하는 요소만 남김
+3. `map()` - 대문자로 변환
+4. `forEach()` - 결과 출력
+
+---
+
+## 🔹 주요 메서드
+
+| 메서드 | 설명 |
+| --- | --- |
+| `filter(Predicate)` | 조건에 맞는 요소만 필터링 |
+| `map(Function)` | 각 요소를 다른 형태로 변환 |
+| `sorted()` | 정렬 |
+| `distinct()` | 중복 제거 |
+| `limit(n)` | 앞에서 n개만 추출 |
+| `skip(n)` | 앞에서 n개 건너뜀 |
+| `collect()` | 결과를 컬렉션 등으로 수집 |
+| `forEach()` | 각 요소에 대해 작업 수행 |
+| `reduce()` | 모든 요소를 하나로 축약 |
+
+---
+
+## 🔹 예시: 숫자 리스트에서 짝수만 제곱해서 리스트로 변환
+
+```java
+List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+List<Integer> result = numbers.stream()
+                              .filter(n -> n % 2 == 0)
+                              .map(n -> n * n)
+                              .collect(Collectors.toList());
+
+```
+
+---
+
+## 🔹 스트림의 종류
+
+| 스트림 종류 | 설명 |
+| --- | --- |
+| `stream()` | 순차 스트림 |
+| `parallelStream()` | 병렬 스트림 (멀티코어 활용) |
+
+---
+
+## 🔹 장점 요약
+
+- 코드가 **간결**해짐
+- **가독성** 향상
+- **병렬 처리** 용이 (`parallelStream()`)
+- 기존 컬렉션을 **변경하지 않음** (불변성 유지)
+
+---
+</div>
+</details>
+
+<details>
+<summary>Stream과 for~loop의 성능 차이를 비교해 주세요</summary>
+<div>
+
+좋은 질문이에요! `Java Stream`과 전통적인 `for` 루프는 **성능 측면에서 상황에 따라 장단점이 다릅니다**. 아래에서 구체적으로 비교해 드릴게요.
+
+---
+
+## 🔸 성능 비교: Stream vs for 루프
+
+| 항목 | `for` 루프 | `Stream` | `parallelStream` |
+| --- | --- | --- | --- |
+| **기본 실행 성능** | ✔ 보통 가장 빠름 | ❌ 약간 느릴 수 있음 (함수 객체 생성 등 오버헤드) | ⚠ 빠를 수도, 느릴 수도 있음 (병렬화 오버헤드 존재) |
+| **메모리 사용량** | 낮음 (객체 생성 적음) | 보통 | 높음 (스레드풀, 분할 작업 등) |
+| **간단한 반복** | 가장 빠름 | 느림 | 사용 비효율적 |
+| **복잡한 파이프라인** | 구현 복잡 | 코드 간결 | 병렬 처리로 성능 향상 가능 |
+| **병렬 처리** | 직접 구현 필요 | 불가능 | ✔ 자동 병렬화 가능 (`parallelStream()`) |
+| **성능 튜닝** | 자유도 높음 | 제한적 | 어려움 (자동 스케줄링) |
+
+---
+
+## 🔸 간단한 예: 숫자 리스트의 합 구하기
+
+```java
+// 전통적인 for 루프
+int sum = 0;
+for (int i = 0; i < list.size(); i++) {
+    sum += list.get(i);
+}
+
+```
+
+```java
+// Stream 사용
+int sum = list.stream().mapToInt(i -> i).sum();
+
+```
+
+```java
+// 병렬 Stream 사용
+int sum = list.parallelStream().mapToInt(i -> i).sum();
+
+```
+
+> 🔍 벤치마크 결과 요약 (예시)
+> 
+- 1,000개 이하의 데이터: `for` 루프가 일반적으로 가장 빠름
+- 100,000개 이상 + 연산량 많을 때: `parallelStream()`이 유리할 수도 있음
+- 10,000개 수준의 일반 처리: `stream()`은 `for` 루프보다 약간 느림 (약 5~20%)
+
+---
+
+## 🔸 실전에서는?
+
+| 상황 | 추천 방식 |
+| --- | --- |
+| 소량의 간단한 반복 | `for` 루프 |
+| 파이프라인 방식으로 데이터 가공 | `stream()` |
+| 대용량 + CPU 집약적 작업 | `parallelStream()` (테스트 필요) |
+| 성능이 민감하고 정밀 제어 필요 | `for` 루프 (가장 확실함) |
+
+---
+
+## 🔺 주의할 점: `parallelStream()` 과잉 사용 주의
+
+- 내부적으로 **ForkJoinPool.commonPool**을 사용 → 다른 병렬 작업과 자원 충돌 가능
+- IO 작업, DB 호출이 많으면 **오히려 느려질 수 있음**
+- 성능 향상은 **CPU 연산 중심의 순수 계산 작업**에서만 보장됨
+
+---
+</div>
+</details>
+
+<details>
+<summary>Stream은 병렬처리 할 수나요?</summary>
+<div>
+
+**Java Stream은 병렬처리를 지원합니다.**
+
+이를 위해 사용하는 것이 바로 `**parallelStream()**`입니다.
+
+---
+
+## ✅ 어떻게 병렬처리를 하나요?
+
+```java
+list.parallelStream()
+    .filter(...)
+    .map(...)
+    .collect(...);
+
+```
+
+위처럼 `.parallelStream()`을 사용하면, Java는 내부적으로 **ForkJoinPool**이라는 스레드풀을 사용해서 데이터를 **여러 스레드로 분할해서 병렬로 처리**합니다.
+
+---
+
+## 🔸 내부 구조
+
+- `parallelStream()`은 데이터를 여러 조각으로 나눠서 병렬로 처리
+- Java 8의 `ForkJoinPool.commonPool` 사용 (기본 스레드 수: CPU 코어 수)
+- 각 조각은 독립적으로 처리되고, 최종적으로 결과를 합침 (reduce, collect 등으로)
+
+---
+
+## 🔸 예시
+
+```java
+List<Integer> numbers = IntStream.rangeClosed(1, 1_000_000)
+                                 .boxed()
+                                 .collect(Collectors.toList());
+
+long start = System.currentTimeMillis();
+int sum = numbers.parallelStream()
+                 .mapToInt(i -> i)
+                 .sum();
+long end = System.currentTimeMillis();
+
+System.out.println("Sum = " + sum + ", Time = " + (end - start) + "ms");
+
+```
+
+---
+
+## ✅ 언제 유리한가?
+
+| 조건 | 병렬 Stream이 유리 |
+| --- | --- |
+| 데이터 양이 많고 (수천~수백만 이상) | ✔ |
+| 각 요소 처리 시간이 상대적으로 큼 | ✔ |
+| 연산이 CPU 중심적 (계산 위주) | ✔ |
+| 공유 자원(파일, DB, 네트워크 등) 접근 없음 | ✔ |
+
+---
+
+## ❗ 주의할 점
+
+| 항목 | 설명 |
+| --- | --- |
+| ⚠ IO 연산 포함 | 느려질 수 있음 (스레드 경합 발생) |
+| ⚠ 상태 있는 연산 (`forEach`, 외부 변수 수정 등) | 병렬성 깨지고 결과도 예측 불가 |
+| ⚠ 순서 중요 작업 (`forEachOrdered`, 정렬) | 병렬 처리 이점 사라짐 |
+| ⚠ 공용 자원 접근 (DB, 파일 등) | 병렬성 이점보다 경합이 더 클 수 있음 |
+
+---
+
+## 🔸 순차 vs 병렬 비교 (요약)
+
+| 처리 방식 | 특징 |
+| --- | --- |
+| `stream()` | 순차 처리, 안전하고 예측 가능 |
+| `parallelStream()` | 병렬 처리, 빠를 수도 있고 오히려 느릴 수도 있음 (테스트 필요) |
+
+---
+
+## ✅ 결론
+
+- **병렬 처리가 필요하다면 `parallelStream()`은 매우 강력한 도구**
+- 하지만 무턱대고 쓰면 성능 저하나 예기치 못한 결과가 발생할 수 있음
+- 따라서 **병렬화 전/후 성능을 꼭 측정하고**, 쓰임새에 맞게 선택하는 것이 중요합니다
+</div>
+</details>

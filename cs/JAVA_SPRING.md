@@ -2210,3 +2210,293 @@ System.out.println("Sum = " + sum + ", Time = " + (end - start) + "ms");
 - 따라서 **병렬화 전/후 성능을 꼭 측정하고**, 쓰임새에 맞게 선택하는 것이 중요합니다
 </div>
 </details>
+
+<details>
+<summary>stream에서 사용할 수 있는 함수형 인터페이스에 대해 설명해주세요</summary>
+<div>
+
+## 1. Predicate
+
+- **패키지**: `java.util.function`
+- **시그니처**: `boolean test(T t)`
+- **용도**: `filter`, `anyMatch`, `allMatch`, `noneMatch`
+- **예시**:
+    
+    ```java
+    List<String> names = List.of("Anna","Bob","Charlie");
+    names.stream()
+         .filter(s -> s.length() >= 4)      // Predicate<String>
+         .forEach(System.out::println);
+    
+    ```
+    
+
+---
+
+## 2. Function<T,R>
+
+- **패키지**: `java.util.function`
+- **시그니처**: `R apply(T t)`
+- **용도**: `map`, `flatMap` (리턴 타입이 Stream일 때)
+- **파생**:
+    - `UnaryOperator<T>` : `Function<T,T>` (입력과 출력이 같을 때)
+- **예시**:
+    
+    ```java
+    List<Integer> nums = List.of(1,2,3);
+    nums.stream()
+        .map(n -> n * 2)                  // Function<Integer,Integer>
+        .forEach(System.out::println);
+    
+    ```
+    
+
+---
+
+## 3. Consumer
+
+- **패키지**: `java.util.function`
+- **시그니처**: `void accept(T t)`
+- **용도**: `peek`, `forEach`
+- **예시**:
+    
+    ```java
+    List<String> items = List.of("a","b","c");
+    items.stream()
+         .peek(s -> System.out.print("item=" + s + " "))
+         .forEach(s -> {});                // Consumer<String>
+    
+    ```
+    
+
+---
+
+## 4. Supplier
+
+- **패키지**: `java.util.function`
+- **시그니처**: `T get()`
+- **용도**: `Stream.generate`, `collect` 의 공급자(초기 컨테이너)
+- **예시**:
+    
+    ```java
+    Stream<String> infiniteOnes = Stream.generate(() -> "one"); // Supplier<String>
+    
+    ```
+    
+
+---
+
+## 5. BinaryOperator
+
+- **패키지**: `java.util.function`
+- **시그니처**: `T apply(T a, T b)`
+- **용도**: `reduce(BinaryOperator)`, `min`/`max` 내부 구현, `Collector.of`의 combiner
+- **파생**:
+    - `IntBinaryOperator`, `LongBinaryOperator`, `DoubleBinaryOperator` (프리미티브 버전)
+- **예시**:
+    
+    ```java
+    int sum = List.of(1,2,3,4).stream()
+                .reduce(0, Integer::sum);        // BinaryOperator<Integer>
+    
+    ```
+    
+
+---
+
+## 6. BiFunction<T,U,R>
+
+- **패키지**: `java.util.function`
+- **시그니처**: `R apply(T t, U u)`
+- **용도**: `reduce(identity, BiFunction, BinaryOperator)` 형태, `Collector.of` accumulator
+- **예시** (`collect` with accumulator + combiner):
+    
+    ```java
+    List<String> names = List.of("Anna","Bob","Charlie");
+    String joined = names.stream()
+        .reduce("",
+                (partial, s) -> partial + s + ",",     // BiFunction<String,String,String>
+                String::concat);                       // BinaryOperator<String>
+    
+    ```
+    
+
+---
+
+## 7. Comparator
+
+- **패키지**: `java.util`
+- **시그니처**: `int compare(T o1, T o2)`
+- **용도**: `sorted(Comparator)`, `min`, `max`
+- **예시**:
+    
+    ```java
+    List<Person> people = …;
+    people.stream()
+          .sorted(Comparator.comparing(Person::getAge))
+          .forEach(System.out::println);
+    
+    ```
+    
+
+---
+
+## 8. Collector<T,A,R>
+
+- **패키지**: `java.util.stream`
+- **핵심 메서드**:
+    - `Supplier<A> supplier()`
+    - `BiConsumer<A, T> accumulator()`
+    - `BinaryOperator<A> combiner()`
+    - `Function<A, R> finisher()`
+- **용도**: `collect(...)` 연산의 모든 단계 제어
+- **예시** (`toList()` 내부 구현 예시):
+    
+    ```java
+    Collector<T, ?, List<T>> toList = Collector.of(
+        ArrayList::new,                     // Supplier<List<T>>
+        List::add,                          // BiConsumer<List<T>, T>
+        (left, right) -> { left.addAll(right); return left; } // BinaryOperator<List<T>>
+    );
+    
+    ```
+    
+
+---
+
+## 9. Primitive용 함수형 인터페이스
+
+- **IntPredicate**, **LongPredicate**, **DoublePredicate**
+- **IntFunction**, **IntToDoubleFunction**, **ToIntFunction**
+- **IntConsumer**, **IntSupplier**, **IntUnaryOperator** 등
+- **용도**: `IntStream`, `LongStream`, `DoubleStream` 특화 연산 (`mapToInt`, `filter`, `sum` 등)
+
+---
+
+### 한눈에 보는 매핑
+
+| 연산 | 인터페이스 | 시그니처 |
+| --- | --- | --- |
+| filter | `Predicate<T>` | `boolean test(T t)` |
+| map | `Function<T,R>` | `R apply(T t)` |
+| flatMap | `Function<T,Stream<R>>` | `Stream<R> apply(T t)` |
+| peek | `Consumer<T>` | `void accept(T t)` |
+| forEach | `Consumer<T>` | `void accept(T t)` |
+| reduce | `BinaryOperator<T>` or `(U, T)→U` | see above |
+| collect | `Supplier<R>`, `BiConsumer<R,T>`, `BinaryOperator<R>` | see Collector |
+| sorted | `Comparator<T>` | `int compare(T o1, T o2)` |
+| generate | `Supplier<T>` | `T get()` |
+
+---
+
+### 실전 팁
+
+1. **타입 안정성**: 제네릭 시그니처(`? super T`, `? extends R`)를 유념해 람다 작성
+2. **메서드 레퍼런스 활용**: `String::toUpperCase`, `List::addAll` 처럼 코드 간결화
+3. **프리미티브 스트림**: 박싱 비용을 줄이려면 `mapToInt`, `IntStream` + `IntUnaryOperator` 등을 사용
+4. **Collector 조합**: `Collectors.mapping`, `Collectors.filtering` 등 컬렉터 보조 메서드 활용
+
+이제 주요 함수형 인터페이스의 역할과 시그니처를 숙지했으니, 어떤 스트림 연산을 하든 바로 적합한 인터페이스를 떠올리고 람다를 작성할 수 있을 겁니다.
+</div>
+</details>
+
+<details>
+<summary>가끔 외부 변수를 사용할 때, final 키워드를 붙여서 사용하는데 왜 그럴까요? 꼭 그래야 할까요?</summary>
+<div>
+
+Stream API에서 외부 변수를 람다(클로저) 안에서 참조할 때도 “final 혹은 효과적으로(final-like) 변수” 규칙이 적용됩니다. 구체적으로 살펴보면:
+
+---
+
+## 1. 스트림 람다와 외부 변수 캡처
+
+```java
+int factor = 2;
+List<Integer> list = List.of(1,2,3);
+
+// 컴파일 에러!
+List<Integer> doubled = list.stream()
+    .map(n -> n * factor++)     // factor를 변경하려고 하면 불가
+    .collect(Collectors.toList());
+
+```
+
+- **이유**: `map` 안의 람다는 내부적으로 익명 클래스처럼 동작합니다.
+- Java 8+ 에서는 `factor` 가 **효과적으로 final**(한 번만 할당되고 재대입되지 않는 경우)이 아니면 컴파일 에러가 납니다.
+- 따라서 외부 변수를 단순히 읽기만(use-only) 하는 건 허용되지만, 수정(mutation)을 시도하면 에러가 납니다.
+
+---
+
+## 2. 효과적으로(final-like) 변수
+
+```java
+int factor = 2;                  // 한 번만 초기화
+List<Integer> doubled = list.stream()
+    .map(n -> n * factor)        // 읽기만 하면 OK
+    .collect(Collectors.toList());
+System.out.println(doubled);     // [2,4,6]
+
+```
+
+- `factor` 를 한 번만 할당했으므로 “효과적으로 final” 변수로 인정됩니다.
+- 따라서 람다 안에서 읽을 수 있고, 명시적 `final` 키워드는 선택 사항입니다.
+
+---
+
+## 3. 왜 “불변성”이 중요한가?
+
+1. **병렬 스트림 안전성**
+    
+    ```java
+    AtomicInteger sum = new AtomicInteger(0);
+    list.parallelStream().forEach(n -> sum.addAndGet(n));
+    
+    ```
+    
+    - 여기선 `sum` 이 mutable container(AtomicInteger)이기 때문에 동시성은 보장되지만,
+    - 원시형 `int total = 0;` 를 외부에서 직접 `total += n` 으로 누적하면 데이터 레이스(race condition) 발생
+2. **함수형 패러다임 유지**
+    - 스트림에서 외부 상태를 바꾸지 않고, **map → reduce** 같은 순수 함수 흐름으로 처리하는 게 권장됩니다.
+    - 예:
+        
+        ```java
+        int total = list.stream()
+                        .mapToInt(Integer::intValue)
+                        .sum();         // 내부에서 안전하게 누적
+        
+        ```
+        
+
+---
+
+## 4. 외부 상태 필요할 땐?
+
+람다 바깥 로컬 변수를 업데이트해야 한다면, 두 가지 대안이 있습니다.
+
+1. **프리미티브 스트림의 `sum()`/`count()`/`reduce()`**
+    
+    ```java
+    long count = list.stream().filter(n -> n > 1).count();
+    
+    ```
+    
+2. **수집기(Collector) 활용**
+    
+    ```java
+    Map<Boolean, List<Integer>> part = list.stream()
+        .collect(Collectors.partitioningBy(n -> n % 2 == 0));
+    
+    ```
+    
+
+이처럼 **외부 변수를 직접 수정하지 않고**, 스트림이 제공하는 연산으로 결과를 얻는 패턴이 권장됩니다.
+
+---
+
+### 요약
+
+- 스트림 람다 안에서 참조하는 로컬 변수는 **반드시 final(혹은 효과적으로 final)** 이어야 합니다.
+- 외부 변수를 변경하려 하면 컴파일 에러가 나며, 병렬 처리 시 안전하지도 않습니다.
+- 외부 상태 대신 `map`·`reduce`·`collect` 같은 스트림 연산을 조합해 **순수 함수형**으로 처리하는 것이 가장 좋습니다.
+</div>
+</details>

@@ -2500,3 +2500,153 @@ System.out.println(doubled);     // [2,4,6]
 - 외부 상태 대신 `map`·`reduce`·`collect` 같은 스트림 연산을 조합해 **순수 함수형**으로 처리하는 것이 가장 좋습니다.
 </div>
 </details>
+
+### Java record 장점
+<details>
+<summary></summary>
+<div>
+
+- **보일러플레이트 제거**
+    - `final` 필드 선언, 생성자, 접근자(getter), `equals`/`hashCode`/`toString` 메서드를 자동 생성
+    - 코드가 크게 줄어들어 가독성·유지보수성↑
+- **불변(Immutable) 데이터 클래스**
+    - 선언한 모든 컴포넌트가 자동으로 `private final`이므로, 안전한 데이터 전달 객체로 활용
+    - 멀티스레드 환경에서도 상태 변경 걱정 최소화
+- **간결한 선언**
+    
+    ```java
+    // 기존 방식
+    public class Person {
+        private final String name;
+        private final int age;
+        public Person(String name, int age) {
+            this.name = name; this.age = age;
+        }
+        public String name() { return name; }
+        public int age() { return age; }
+        // equals, hashCode, toString…
+    }
+    
+    // record 사용
+    public record Person(String name, int age) {}
+    
+    ```
+    
+    한 줄로 동일 기능 구현
+    
+- **패턴 매칭 및 분해(Deconstruction) 지원**
+    
+    ```java
+    Person p = new Person("Alice", 30);
+    switch (p) {
+        case Person(String name, int age) -> System.out.println(name + ", " + age);
+    }
+    
+    ```
+    
+- **타입 안전성(Type Safety)**
+    - 단순 `Map<String, Object>` 같은 느슨한 구조보다, 컴파일 시점에 필드 존재·타입 검증 가능
+- **인터페이스 구현 및 확장 제한**
+    - `implements`로 인터페이스 구현 가능
+    - 클래스를 상속할 수 없어 의도치 않은 확장 방지
+
+---
+
+**정리**: record는 “데이터를 담기만 하는 순수 객체(POJO)”를 간결·안전하게 정의하기 위해 고안된 문법으로, 보일러플레이트를 없애고 불변성을 보장하며, 패턴 매칭 등 최신 JVM 기능과도 시너지를 발휘합니다.
+
+---
+
+추가 설명
+
+### 1. 패턴 매칭 및 분해(Deconstruction) 지원
+
+– **무슨 기능인가?**
+
+record가 가진 필드를 “통째로 풀어(분해)”서 바로 변수에 담아 쓸 수 있게 해 줍니다.
+
+– **왜 좋나?**
+
+복잡한 getter 호출 없이도 `name`, `age` 같은 필드 값을 곧바로 꺼내서 처리할 수 있어요.
+
+– **예시**
+
+```java
+public record Person(String name, int age) {}
+
+Person p = new Person("Alice", 30);
+
+// 기존 방식
+if (p.age() > 18) {
+    System.out.println(p.name() + "는 성인입니다.");
+}
+
+// 분해 지원→switch 안에서 바로 name, age 꺼내쓰기
+switch (p) {
+  case Person(String name, int age) when age > 18 ->
+    System.out.println(name + "는 성인입니다.");
+  default -> System.out.println("미성년자");
+}
+
+```
+
+`case Person(String name, int age)` 부분이 “이 레코드를 name, age 두 변수로 분해”하는 구문입니다.
+
+---
+
+### 2. 타입 안전성(Type Safety)
+
+– **문제 상황**
+
+```java
+Map<String, Object> data = loadFromJson();
+String name = (String) data.get("name");  // 꺼낼 때마다 형변환 필요
+Integer age  = (Integer) data.get("age"); // 잘못된 키나 타입이면 런타임 에러
+
+```
+
+– **record 사용 시**
+
+```java
+public record Person(String name, int age) {}
+
+// JSON → Person 객체로 바로 매핑
+Person p = mapper.readValue(jsonString, Person.class);
+// p.name(), p.age()는 컴파일 시점에 타입·존재 검사가 끝나 있음
+
+```
+
+- **필드 존재**와 **필드 타입**을 컴파일러가 체크하므로, 키 오류나 잘못된 형변환 가능성이 사라집니다.
+
+---
+
+### 3. 인터페이스 구현 및 확장 제한
+
+– **인터페이스 구현**
+
+```java
+public record Point(int x, int y) implements Comparable<Point> {
+    @Override
+    public int compareTo(Point o) {
+        return Integer.compare(x, o.x);
+    }
+}
+
+```
+
+record도 일반 클래스처럼 `implements`로 인터페이스를 구현할 수 있어요.
+
+– **상속 제한**
+
+- record는 묵시적으로 `final` 클래스입니다.
+- 다른 클래스가 `extends MyRecord` 할 수 없어서 “의도치 않은 서브클래스화”를 막아 줍니다.
+- 데이터 용도로만 깔끔하게 쓰겠다는 의도가 명확해집니다.
+
+---
+
+**정리**
+
+1. **분해 지원** → 필드를 바로 변수로 꺼내쓰기 편리
+2. **타입 안전성** → 컴파일 시점에 필드 존재·타입 검증 완료
+3. **인터페이스 구현 + 상속 불가** → 필요 기능만 인터페이스로 추가하면서, 데이터 객체로서 불변성과 일관성 유지
+</div>
+</details>

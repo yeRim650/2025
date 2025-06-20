@@ -2650,3 +2650,214 @@ record도 일반 클래스처럼 `implements`로 인터페이스를 구현할 �
 3. **인터페이스 구현 + 상속 불가** → 필요 기능만 인터페이스로 추가하면서, 데이터 객체로서 불변성과 일관성 유지
 </div>
 </details>
+
+### Java의 GC에 대해 설명
+
+<details>
+<summary></summary>
+<div>
+
+Java에서의 **GC(Garbage Collection, 가비지 컬렉션)**는 Java 프로그램에서 **더 이상 사용되지 않는 객체(=메모리)**를 자동으로 찾아서 **메모리를 회수**하는 기능입니다.
+
+즉, 개발자가 `free()` 같은 메모리 해제를 직접 호출하지 않아도 되게 만들어주는 **자바의 핵심 장점 중 하나**입니다.
+
+---
+
+## ✅ GC의 핵심 개념
+
+| 용어 | 설명 |
+| --- | --- |
+| **힙(Heap)** | 자바 객체들이 생성되는 메모리 공간 |
+| **GC (Garbage Collector)** | 참조되지 않는 객체를 탐지하고 제거하는 Java의 메모리 관리 도구 |
+| **Reachable Object** | 프로그램이 여전히 접근할 수 있는 객체 (삭제 X) |
+| **Unreachable Object** | 더 이상 참조되지 않는 객체 → GC 대상 |
+
+---
+
+## 🔄 GC의 작동 방식 (간단 흐름)
+
+1. 객체 생성 → JVM의 힙(Heap)에 저장
+2. 객체 참조가 끊기면 → "Unreachable" 상태
+3. GC가 주기적으로 실행되어 해당 객체 탐지
+4. 메모리에서 제거하여 힙 공간 회수
+
+---
+
+## 📦 힙 구조 (HotSpot JVM 기준)
+
+```
+Heap
+├── Young Generation (새 객체)
+│   ├── Eden
+│   └── Survivor (S0, S1)
+├── Old Generation (오래된 객체)
+└── Metaspace (클래스 메타데이터)
+
+```
+
+| 영역 | 설명 |
+| --- | --- |
+| **Eden** | 새로 생성된 객체가 처음 배치됨 |
+| **Survivor** | Eden에서 살아남은 객체가 이곳으로 이동 |
+| **Old** | 장시간 생존한 객체가 여기에 저장됨 (Full GC 대상) |
+| **Metaspace** | 클래스 정의 등 메타 정보 저장 (Java 8 이후 PermGen 대체) |
+
+---
+
+## 🔍 GC 종류 (HotSpot 기준)
+
+| 이름 | 설명 | 사용 시기 |
+| --- | --- | --- |
+| **Serial GC** | 단일 스레드, 단순함 | 작은 메모리 환경 |
+| **Parallel GC** | 멀티 스레드, Throughput 중심 | 대부분의 기본 JVM 설정 |
+| **CMS (Concurrent Mark-Sweep)** | 낮은 지연시간, 점진적 GC | 지연시간 민감한 앱 (구식) |
+| **G1 GC (Garbage First)** | 예측 가능한 지연시간 | Java 9부터 기본 (대규모 앱) |
+| **ZGC / Shenandoah** | 초저지연, 초대형 힙 지원 | 최신 JVM (Java 11+ 이상) |
+
+---
+
+## ✅ GC가 중요한 이유
+
+| 장점 | 설명 |
+| --- | --- |
+| 자동 메모리 관리 | 메모리 누수 방지, 편리함 |
+| 코드 단순화 | `delete`나 `free` 필요 없음 |
+| 성능 최적화 | 최신 GC는 지연 시간/스루풋 균형을 자동 조절 |
+
+---
+
+## ⚠️ 개발 시 주의할 점
+
+- 객체 참조를 오래 유지하면 **GC가 회수하지 못함** → 메모리 누수 유발
+- `static`, `ThreadLocal`, 이벤트 리스너 등은 특히 조심
+- `System.gc()` 호출은 지양 (강제 호출하지만 실제 실행 여부는 JVM 판단)
+
+---
+
+## 🧠 한 줄 요약
+
+> Java의 GC는 프로그램이 더 이상 필요하지 않은 객체를 자동으로 탐지하고 제거하여 메모리를 효율적으로 관리해 주는 기능입니다.
+>
+</div>
+</details>
+<details>
+<summary>finalize() 를 수동으로 호출하는 것은 왜 문제가 될 수 있을까요?</summary>
+<div>
+
+`finalize()` 메서드를 **수동으로 호출하는 것은 심각한 문제를 일으킬 수 있습니다.**
+
+그 이유는 **`finalize()`는 JVM이 가비지 컬렉션(GC) 과정 중에 호출하기 위해 존재하는 메서드**이기 때문입니다.
+
+---
+
+## ❗️`finalize()`를 수동 호출하면 생기는 문제점
+
+| 문제 | 설명 |
+| --- | --- |
+| ✅ **객체가 GC 대상이 아님에도 finalize 실행됨** | GC는 객체가 "더 이상 참조되지 않을 때"만 `finalize()`를 자동 호출. 수동 호출은 이 규칙을 깨버림. |
+| ❌ **메모리 회수 오해 가능성** | `finalize()`가 호출됐다고 해서 JVM이 객체를 삭제한 것이 아님. 여전히 메모리에 있음. |
+| ⚠️ **예외가 무시됨** | 수동 호출 시 예외가 발생해도 JVM은 잡아주지 않음. GC에 의한 호출 시에는 JVM이 적절히 예외를 처리함. |
+| 🔄 **객체 되살리기(resurrection) 가능** | finalize 내부에서 `this`를 다시 참조하면 객체가 되살아나 GC가 안 됨 → 메모리 누수 가능성 증가 |
+| 🐢 **예측 불가능한 동작** | finalize는 본래 비결정적 실행을 전제로 하므로, 수동 호출은 프로그램 로직의 흐름을 어지럽힐 수 있음 |
+
+---
+
+## 📌 예시
+
+```java
+public class Demo {
+    @Override
+    protected void finalize() throws Throwable {
+        System.out.println("Finalize called");
+    }
+}
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        Demo d = new Demo();
+        d.finalize(); // ❌ 수동 호출 (문제 발생 가능)
+    }
+}
+
+```
+
+위 코드는 실제로 **GC 없이 finalize를 실행**합니다. 하지만 이 객체는 아직 살아 있습니다. 따라서 개발자는 이 객체가 정리됐다고 착각할 수 있습니다.
+
+---
+
+## ✅ 올바른 사용 방법
+
+- **절대 `finalize()`를 직접 호출하지 마세요.**
+- 대신 `try-with-resources` 또는 `AutoCloseable`, `Cleaner`, `PhantomReference` 같은 더 안전한 자원 해제 방법을 사용하세요.
+
+---
+
+## 🚫 참고: Java 9 이후 `finalize()`는 **Deprecated**
+
+- `finalize()`는 **Java 9에서 deprecated**, **Java 18+에서는 완전히 제거 예정**
+- 자원 정리는 `try-with-resources` 및 `Cleaner` 클래스로 대체 권장
+
+---
+
+## ✅ 결론
+
+> finalize()를 수동 호출하면 JVM의 메모리 관리 원칙을 어기게 되며, 심각한 오류나 메모리 누수, 비정상 동작을 초래할 수 있습니다. 절대 수동 호출하지 말고 자동 호출에만 맡기세요.
+>
+</div>
+</details>
+
+<details>
+<summary>어떤 변수의 값이 null이 되었다면, 이 값은 GC가 될 가능성이 있을까요?</summary>
+<div>
+
+**어떤 변수의 값이 `null`로 설정되었다면**, 그 객체는 **GC(Garbage Collection)의 대상이 될 가능성이 있습니다.**
+
+---
+
+## ✅ 왜 그런가요?
+
+자바에서 **GC의 기본 원칙은 "더 이상 어떤 경로에서도 참조되지 않는 객체"를 수거**하는 것입니다.
+
+### 🔹 예를 들어:
+
+```java
+MyObject obj = new MyObject();
+obj = null; // ← 이 순간 이전에 생성된 MyObject 인스턴스는 참조되지 않음
+
+```
+
+위 코드에서 `obj = null;`로 설정되면, **이전 객체는 더 이상 참조되지 않으므로 GC 대상이 됩니다.**
+
+---
+
+## ⚠️ 단, 예외도 있습니다!
+
+객체가 **다른 곳에서 여전히 참조되고 있다면** `null`로 설정했다고 해서 GC 대상이 되지는 않습니다.
+
+예:
+
+```java
+List<MyObject> list = new ArrayList<>();
+MyObject obj = new MyObject();
+list.add(obj);
+obj = null; // ❌ 아직 list가 obj를 참조 중이므로 GC 대상 아님
+
+```
+
+---
+
+## ✅ 결론
+
+| 조건 | GC 대상 가능성 |
+| --- | --- |
+| 변수에서 null로 설정하고, **다른 참조도 없음** | ✅ 예, GC 대상 가능 |
+| null로 설정했지만 **다른 객체가 여전히 참조 중** | ❌ 아니요, GC 대상 아님 |
+
+---
+
+### 🔍 참고: 명시적으로 null 처리하는 이유?
+
+- 큰 객체나 배열 등을 명시적으로 `null` 처리하여 **GC 대상이 되도록 유도**하는 경우가 있음 (메모리 누수 방지)
+- 특히 **루프, 오래 살아 있는 객체 내부의 참조** 등을 관리할 때 유용
+</div>
+</details>

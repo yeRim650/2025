@@ -4017,3 +4017,400 @@ public abstract class SingletonClient {
 >
 </div>
 </details>
+
+### AOP에 대해 설명해 주세요
+
+<details>
+<summary></summary>
+<div>
+AOP(Aspect-Oriented Programming, **관점 지향 프로그래밍**)는 Spring 프레임워크에서 굉장히 중요한 개념이며, **핵심 비즈니스 로직과 부가적인 관심사(로깅, 트랜잭션, 보안 등)를 분리**하는 데 사용됩니다.
+
+---
+
+## ✅ AOP란 무엇인가?
+
+> **AOP는 핵심 로직(what you do)**과
+> 
+> 
+> **공통 관심사(when/how you do it)를 분리**하는 프로그래밍 기법입니다.
+> 
+
+---
+
+## ✅ AOP가 왜 필요한가요?
+
+### 전통적 방식의 문제
+
+```java
+public void placeOrder() {
+    System.out.println("✅ 트랜잭션 시작");
+    // 핵심 로직
+    System.out.println("📦 주문 처리");
+    System.out.println("✅ 트랜잭션 커밋");
+}
+
+```
+
+- 모든 메서드에 **반복적으로 트랜잭션, 로깅 코드**가 들어감 → **관심사 혼합**
+- 유지보수 어렵고, 코드 중복 발생
+
+---
+
+## ✅ AOP의 핵심 개념
+
+| 용어 | 설명 |
+| --- | --- |
+| **Aspect** | 공통 관심사를 모듈화한 클래스 (ex: 로깅, 트랜잭션) |
+| **Join Point** | Aspect를 적용할 수 있는 지점 (메서드 실행 등) |
+| **Advice** | Join Point에서 수행할 코드 (실제 기능) |
+| **Pointcut** | 어떤 Join Point에 Advice를 적용할지 결정하는 표현식 |
+| **Weaving** | Advice를 실제 코드에 적용하는 과정 (컴파일, 클래스 로딩, 런타임 시) |
+
+---
+
+## ✅ Spring AOP 구조 그림 (개념적으로)
+
+```
+[Client] → [Proxy] → [Target Bean]
+                ↑
+       [Aspect (Advice)]
+
+```
+
+Spring은 **프록시 객체**를 만들어서 실제 Bean 앞뒤로 Advice를 삽입합니다.
+
+---
+
+## ✅ AOP 예제 코드 (Spring 기반)
+
+```java
+@Aspect
+@Component
+public class LoggingAspect {
+
+    // Pointcut: 모든 com.example.service 패키지의 메서드
+    @Pointcut("execution(* com.example.service..*(..))")
+    public void serviceMethods() {}
+
+    // Advice: 메서드 실행 전
+    @Before("serviceMethods()")
+    public void logBefore() {
+        System.out.println("📢 메서드 실행 전 로깅");
+    }
+
+    // Advice: 메서드 실행 후
+    @AfterReturning("serviceMethods()")
+    public void logAfter() {
+        System.out.println("✅ 메서드 실행 완료 후 로깅");
+    }
+}
+
+```
+
+---
+
+## ✅ AOP의 적용 예
+
+| 관심사 | Aspect로 구현 | 실제 적용 대상 |
+| --- | --- | --- |
+| 로깅 | LoggingAspect | 모든 서비스 |
+| 트랜잭션 처리 | TransactionAspect | Repository 또는 Service |
+| 보안 | SecurityAspect | Controller |
+| 실행 시간 측정 | TimingAspect | 특정 메서드 |
+
+---
+
+## ✅ Spring AOP의 특징
+
+| 항목 | 설명 |
+| --- | --- |
+| 방식 | 프록시 기반 (JDK 동적 프록시 or CGLIB) |
+| 대상 | 기본적으로 메서드 단위 |
+| 제한 | **클래스 내부 호출(self-invocation)은 적용 안 됨** (주의!) |
+| 성능 | 런타임 프록시 방식으로 가볍고 실용적 |
+
+---
+
+## ✅ 요약 한줄
+
+> AOP는 핵심 로직과 공통 관심사(로깅, 트랜잭션 등)를 분리하여
+코드를 깔끔하고 유지보수 가능하게 만들어주는 프로그래밍 패턴이며,
+Spring은 이를 프록시 방식으로 지원합니다.
+>
+</div>
+</details>
+
+<details>
+<summary>@Aspect는 어떻게 동작하나요?</summary>
+<div>
+
+`@Aspect`가 붙은 클래스가 **어떻게 동작하고**,
+
+Spring이 내부적으로 **어떻게 AOP 로직을 적용하는지**는 실무에서 매우 중요합니다.
+
+---
+
+## ✅ 핵심 요약
+
+> @Aspect는 Spring AOP에서 **공통 관심사(Advice)**를 선언하는 클래스이며,
+> 
+> 
+> Spring이 이 클래스를 프록시 객체에 연결해서 **동작 중 끼어들게 만들어줍니다**.
+> 
+
+---
+
+## ✅ @Aspect의 동작 과정
+
+Spring에서 `@Aspect`가 동작하기 위해서는 다음 요소들이 함께 필요합니다:
+
+### 🔹 1. `@EnableAspectJAutoProxy`
+
+- Spring이 AOP 프록시를 만들 수 있도록 **AOP 기능을 활성화**합니다.
+
+```java
+@Configuration
+@EnableAspectJAutoProxy
+public class AppConfig { }
+
+```
+
+> ✅ 대부분의 Spring Boot 프로젝트는 이미 이 기능이 내장돼 있어 따로 쓸 필요는 없습니다.
+> 
+
+---
+
+### 🔹 2. `@Aspect` 클래스 작성
+
+```java
+@Aspect
+@Component
+public class LoggingAspect {
+
+    @Before("execution(* com.example.service..*(..))")
+    public void logBefore() {
+        System.out.println("메서드 실행 전 로깅");
+    }
+}
+
+```
+
+---
+
+### 🔹 3. 스프링이 하는 일 (실제 동작 흐름)
+
+1. 애플리케이션 시작 시 Spring이 `@Aspect` 클래스를 스캔하고 등록
+2. 대상이 되는 Bean (예: Service 클래스)에 **프록시 객체**를 생성
+3. 클라이언트가 Service 메서드를 호출하면,
+    - → 먼저 **프록시 객체가 가로채고**,
+    - → Aspect의 `@Before`, `@After`, `@Around` 등 **Advice가 실행**
+    - → 그 후 실제 Bean 메서드가 실행됨
+
+---
+
+## ✅ 예시 흐름 그림
+
+```
+[Client] → [Service 프록시] → [Aspect Advice 실행] → [실제 Service Bean]
+
+```
+
+- `@Aspect`는 실제 비즈니스 로직에 **코드를 끼워 넣는 것처럼 동작**하지만,
+    
+    사실은 **프록시 객체가 실행 순서를 제어**합니다.
+    
+
+---
+
+## ✅ 내부 구현 기술
+
+| 방식 | 설명 |
+| --- | --- |
+| JDK 동적 프록시 | 인터페이스 기반 프록시 생성 |
+| CGLIB | 클래스 기반 프록시 (인터페이스 없어도 가능) |
+| 선택 기준 | 대상 클래스에 인터페이스가 있으면 JDK, 없으면 CGLIB |
+
+---
+
+## ✅ 동작 확인 예: 프록시 클래스 로그 찍기
+
+```java
+@Service
+public class MyService {
+    public void hello() {
+        System.out.println("Hello Service");
+    }
+}
+
+```
+
+```java
+@SpringBootApplication
+public class AopTestApp implements CommandLineRunner {
+
+    @Autowired
+    ApplicationContext context;
+
+    public void run(String... args) {
+        Object bean = context.getBean(MyService.class);
+        System.out.println("Bean 클래스: " + bean.getClass());
+    }
+}
+
+```
+
+### 🔍 출력 예:
+
+```
+Bean 클래스: class com.example.MyService$$EnhancerBySpringCGLIB$$abc123
+
+```
+
+👉 프록시 객체가 실제 클래스(MyService)를 감싸고 있음 = AOP 작동 중
+
+---
+
+## ✅ 요약 한줄
+
+> @Aspect는 공통 기능을 정의한 클래스이며,
+> 
+> 
+> Spring은 프록시 객체를 통해 메서드 호출 전/후에 Advice를 삽입함으로써 **런타임에 AOP를 구현**합니다.
+>
+</div>
+</details>
+
+###  Spring 에서 Interceptor와 Servlet Filter에 대해 설명해 주세요.
+
+<details>
+<summary></summary>
+<div>
+Spring에서 **Interceptor**와 **Servlet Filter**는 둘 다 HTTP 요청과 응답을 가로채어 처리할 수 있는 기능을 제공하지만, **적용 범위**와 **사용 목적**, **기술 스택의 위치** 측면에서 차이가 있습니다. 아래에 두 개념을 비교하면서 설명드리겠습니다.
+
+---
+
+## ✅ 1. Servlet Filter (서블릿 필터)
+
+### 📌 정의
+
+- **Servlet API**에서 제공하는 기능으로, DispatcherServlet 앞단에서 동작합니다.
+- 웹 애플리케이션의 **전반적인 요청/응답을 필터링**하는 데 사용됩니다.
+
+### 📌 동작 위치
+
+- **Servlet Container 수준** (Tomcat 등)에서 동작
+- Spring Context 밖에서 실행되며, Spring Bean에 접근하기 어렵습니다.
+
+### 📌 주 용도
+
+- 인증/인가 처리 (기본 인증)
+- 로깅
+- CORS 처리
+- GZIP 압축 처리
+- XSS 방지
+
+### 📌 구현 예시
+
+```java
+public class MyFilter implements Filter {
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        // 전처리
+        System.out.println("Filter 실행 전");
+
+        chain.doFilter(request, response); // 다음 필터 or 서블릿 실행
+
+        // 후처리
+        System.out.println("Filter 실행 후");
+    }
+}
+
+```
+
+```java
+@Configuration
+public class FilterConfig {
+    @Bean
+    public FilterRegistrationBean<MyFilter> loggingFilter() {
+        FilterRegistrationBean<MyFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new MyFilter());
+        registrationBean.addUrlPatterns("/*");
+        return registrationBean;
+    }
+}
+
+```
+
+---
+
+## ✅ 2. Spring Interceptor (스프링 인터셉터)
+
+### 📌 정의
+
+- **Spring MVC에서 제공하는 인터셉터 기능**으로, HandlerMapping → Controller 사이에서 동작합니다.
+- Spring의 DispatcherServlet 내부에서 동작하며, Spring Bean에 자유롭게 접근할 수 있습니다.
+
+### 📌 동작 위치
+
+- DispatcherServlet 내부 (Spring MVC context 안)
+
+### 📌 주 용도
+
+- 로그인 세션 체크
+- 권한 검사
+- 요청 로깅
+- 공통 Model 데이터 설정
+
+### 📌 구현 예시
+
+```java
+public class MyInterceptor implements HandlerInterceptor {
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        System.out.println("Interceptor 실행 전");
+        return true; // false 반환 시 컨트롤러로 요청이 전달되지 않음
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        System.out.println("Interceptor 실행 후");
+    }
+}
+
+```
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new MyInterceptor())
+                .addPathPatterns("/api/**") // 적용 경로
+                .excludePathPatterns("/login"); // 제외 경로
+    }
+}
+
+```
+
+---
+
+## 🔍 Filter vs Interceptor 요약 비교
+
+| 항목 | Servlet Filter | Spring Interceptor |
+| --- | --- | --- |
+| 위치 | 서블릿 컨테이너 수준 | Spring DispatcherServlet 이후 |
+| 설정 방법 | `FilterRegistrationBean`, `web.xml` | `WebMvcConfigurer` |
+| 접근 가능 영역 | Spring Bean 접근 어려움 | Spring Bean 접근 쉬움 |
+| 주 용도 | 보안, 로깅, CORS 등 | 인증/인가, 로깅, Model 설정 등 |
+| 작동 범위 | 전체 요청 | Spring MVC 요청만 |
+
+---
+
+## 📝 결론
+
+- **Filter**는 스프링 프레임워크와 무관한, 전통적인 웹 기술에 기반한 공통 요청 처리 로직에 적합합니다.
+- **Interceptor**는 Spring MVC 기반 애플리케이션에서 **비즈니스 로직 전후 처리**에 적합하며, Spring의 기능과 연동이 가능합니다.
+
+필요에 따라 **둘을 함께 사용하는 것도 일반적**입니다. 예를 들어, Filter로 CORS 처리하고 Interceptor로 로그인 체크를 수행하는 식입니다.
+</div>
+</details>

@@ -4414,3 +4414,283 @@ public class WebConfig implements WebMvcConfigurer {
 필요에 따라 **둘을 함께 사용하는 것도 일반적**입니다. 예를 들어, Filter로 CORS 처리하고 Interceptor로 로그인 체크를 수행하는 식입니다.
 </div>
 </details>
+
+<details>
+<summary>설명만 들어보면 인터셉터만 쓰는게 나아보이는데, 아닌가요? 필터는 어떤 상황에 사용 해야 하나요?</summary>
+<div>
+
+실제로는 **Filter와 Interceptor는 서로 대체하는 것이 아니라, 역할이 다르기 때문에 적절한 상황에 맞게 선택**해야 합니다.
+
+---
+
+## ✅ 왜 Interceptor만 쓰지 않고 Filter도 써야 하나?
+
+### 핵심 차이
+
+- **Interceptor는 Spring MVC 안에서만 작동**합니다. 즉, DispatcherServlet이 처리하는 요청만 가로챌 수 있습니다.
+- 반면, **Filter는 모든 요청에 대해 동작**합니다. 정적 리소스(css/js), 에러 페이지, 서블릿 등까지 포함됩니다.
+
+---
+
+## 🔍 Filter가 필요한 대표적인 상황
+
+| 상황 | 이유 |
+| --- | --- |
+| 🔐 **보안 관련 처리 (ex. CORS, XSS 방지, JWT 검증)** | CORS 헤더 추가는 Spring에 도달하기 전, 즉 브라우저의 프리플라이트 요청(OPTIONS)에도 대응해야 함. Interceptor는 이런 요청을 잡지 못할 수 있음. |
+| 📦 **정적 리소스 필터링 (ex. /images, /css)** | Interceptor는 Spring Controller에 도달하는 요청만 대상이므로, 정적 리소스에는 작동하지 않음. |
+| 📜 **전역 로깅/트래픽 측정** | 모든 HTTP 요청/응답에 대해 처리해야 하므로 Filter가 더 적합함. |
+| 🚫 **Spring Context가 초기화되지 않은 에러 상황 처리** | Spring 초기화 전에 Filter는 이미 작동하므로, 예외 상황에 더 안정적으로 대응할 수 있음. |
+| 🗂️ **다른 서블릿과의 통합 (예: JSP, REST 외 서블릿)** | Interceptor는 오직 Spring MVC 기반 요청만 처리 가능. Filter는 모든 서블릿 요청을 처리 가능. |
+
+---
+
+## 🛠️ 요약: 언제 무엇을 써야 하나?
+
+| 목적 | Filter | Interceptor |
+| --- | --- | --- |
+| Spring 밖의 요청도 처리 필요 | ✅ | ❌ |
+| Spring Bean에 의존하는 로직 | ❌ | ✅ |
+| 모든 요청에 로깅 적용 | ✅ | 보완용 |
+| 로그인 세션/토큰 검증 | 보완적 | ✅ |
+| 정적 리소스 필터링 | ✅ | ❌ |
+| Spring Controller 진입 전/후 조작 | ❌ | ✅ |
+
+---
+
+## 🔚 결론
+
+- **Interceptor는 "Spring MVC의 Handler 앞뒤에 뭔가 끼워넣고 싶을 때" 사용**합니다.
+- **Filter는 "HTTP 요청 전반을 다루거나, Spring과 무관한 요청에도 개입해야 할 때" 사용**합니다.
+- 현실적인 애플리케이션에서는 **둘을 함께 사용하는 경우가 많으며**, 역할 분담이 명확합니다.
+
+필요하다면, 둘의 실행 순서를 조정하거나 **필터에서 토큰 검증하고, 인터셉터에서 사용자 인증 상태만 체크하는 식의 분리된 아키텍처**를 구성하기도 합니다.
+</div>
+</details>
+
+### DispatcherServlet 의 역할에 대해 설명해 주세요.
+
+<details>
+<summary></summary>
+<div>
+
+Spring MVC의 핵심 구성요소 중 하나인 **`DispatcherServlet`**은 프레임워크의 **요청 처리 흐름을 조율하는 중앙 컨트롤러** 역할을 합니다. 이름 그대로 "요청을 분배(dispatch)"하는 역할을 하며, Spring MVC 아키텍처에서 **프론트 컨트롤러 (Front Controller)** 패턴을 구현한 것입니다.
+
+---
+
+## ✅ DispatcherServlet이란?
+
+- Spring MVC의 **핵심 서블릿 클래스**
+- 모든 HTTP 요청을 **가로채고**, **처리할 컨트롤러로 전달**, **응답을 생성하여 반환**하는 역할
+- 스프링 웹 애플리케이션에서 **클라이언트 요청의 진입점**
+
+---
+
+## ⚙️ DispatcherServlet의 주요 역할 (요청 흐름 기준)
+
+아래는 DispatcherServlet이 수행하는 주요 단계입니다:
+
+1. **클라이언트가 요청을 보냄**
+    - 예: `GET /users/123`
+2. **DispatcherServlet이 요청을 수신**
+    - URL 패턴이 `/` 또는 `/*`로 매핑되어 모든 요청을 받아들임
+    - `web.xml` 또는 `SpringBootApplication` 설정에서 등록됨
+3. **HandlerMapping에게 어떤 컨트롤러(Handler)가 요청을 처리할지 조회**
+    - 예: `/users/123` → `UserController.getUser()`
+4. **적절한 HandlerAdapter를 통해 컨트롤러 실행**
+    - 요청 파라미터, 경로 변수, 바디 등을 분석하여 컨트롤러 메서드에 주입하고 실행
+5. **Controller에서 반환한 결과 (예: ModelAndView 또는 ResponseEntity)를 처리**
+    - 반환값은 ViewResolver나 HttpMessageConverter에 의해 가공됨
+6. **ViewResolver를 통해 렌더링할 뷰(View)를 결정 (HTML, JSP 등)**
+    - 혹은 JSON 응답 등 비동기 방식 처리
+7. **응답을 클라이언트에게 전송**
+
+---
+
+## 🔄 DispatcherServlet의 처리 순서 (요약 다이어그램)
+
+```
+[Client Request]
+       ↓
+[Filter]  ← (서블릿 레벨의 전처리)
+       ↓
+[DispatcherServlet]
+       ↓
+[HandlerMapping] → 어떤 컨트롤러를 호출할지 결정
+       ↓
+[HandlerAdapter] → 컨트롤러 호출
+       ↓
+[Controller] → 비즈니스 로직 수행
+       ↓
+[ViewResolver / HttpMessageConverter] → 결과 처리
+       ↓
+[DispatcherServlet] → 응답 조립
+       ↓
+[Client Response]
+
+```
+
+---
+
+## 🧠 DispatcherServlet의 장점
+
+- **중앙 집중 처리**: 모든 요청을 한 곳에서 관리하여, 인증, 로깅, 오류 처리 등을 쉽게 확장할 수 있음
+- **유연한 확장성**: HandlerMapping, ViewResolver 등 컴포넌트를 쉽게 커스터마이징 가능
+- **분리된 관심사**: 요청, 비즈니스 로직, 응답 렌더링이 분리되어 있음 (MVC 구조)
+
+---
+
+## 📝 결론
+
+- *DispatcherServlet은 Spring MVC의 "심장"**이라고 할 수 있습니다.
+
+요청이 들어오면 이를 적절한 컨트롤러로 연결하고, 응답을 조립하여 클라이언트에게 돌려주는 **중앙 조율자**입니다.
+
+이 구조 덕분에 Spring MVC는 **유연하고 확장 가능한 웹 애플리케이션을 설계**할 수 있게 됩니다.
+</div>
+</details>
+
+<details>
+<summary>여러 요청이 들어온다고 가정할 때, DispatcherServlet은 한번에 여러 요청을 모두 받을 수 있나요?</summary>
+<div>
+
+**"DispatcherServlet은 여러 요청을 동시에 처리할 수 있습니다"** — 단, **DispatcherServlet 자체가 동시성을 직접 처리하는 것은 아니며**, 이 동시 처리는 **서블릿 컨테이너(예: Tomcat, Jetty)**가 담당합니다.
+
+---
+
+## ✅ 설명: DispatcherServlet은 동시 요청을 어떻게 처리하나?
+
+### 1. **서블릿 컨테이너가 쓰레드를 관리**
+
+- 예를 들어 Tomcat은 **요청마다 별도의 쓰레드**를 생성하여 처리합니다.
+- DispatcherServlet은 그 쓰레드 내에서 **Spring MVC 로직을 수행**할 뿐입니다.
+- 즉, 동시에 여러 사용자가 요청을 보내면, 컨테이너가 **요청별 쓰레드**를 생성하여 **DispatcherServlet의 `doService()` 메서드를 각각 실행**합니다.
+
+### 2. **DispatcherServlet은 멀티쓰레드 환경에서 동작**
+
+- 자체적으로 상태를 가지지 않도록 설계되어 있어 **thread-safe**합니다.
+- 각 요청은 **독립적인 Thread-Local 컨텍스트** 안에서 처리됩니다 (예: `HttpServletRequest`, `ModelAndView`, `SecurityContext`, 등).
+
+---
+
+## ⚙️ 예시 흐름
+
+### 상황: 3명의 사용자가 동시에 요청 보냄
+
+| 사용자 | 요청 경로 | 처리 쓰레드 |
+| --- | --- | --- |
+| 사용자 A | `/users/1` | `http-nio-8080-exec-1` |
+| 사용자 B | `/products/5` | `http-nio-8080-exec-2` |
+| 사용자 C | `/login` | `http-nio-8080-exec-3` |
+
+→ **각 쓰레드가 DispatcherServlet을 동시에 호출**하지만, 각각 독립적으로 처리됨
+
+---
+
+## ❗ 주의할 점
+
+### DispatcherServlet 자체는 동시 요청을 잘 처리하지만:
+
+- *싱글톤 빈(예: @Service, @Component 등)**이 상태를 가진다면, 동시성 문제가 발생할 수 있습니다.
+    - 예: 필드에 사용자 데이터를 저장하는 경우 → thread-safe하지 않음
+- 따라서 **상태 없는(stateless) 설계**가 중요합니다.
+    - 메서드 내 지역 변수만 사용하고, 공용 필드에 요청 데이터를 저장하지 말아야 합니다.
+
+---
+
+## 🧠 결론
+
+- ✅ **DispatcherServlet은 여러 요청을 동시에 처리할 수 있습니다.**
+- ❗ 실제 요청 동시성은 **서블릿 컨테이너의 쓰레드 풀과 설정**에 따라 좌우됩니다.
+- 🧼 Spring MVC와 DispatcherServlet은 동시 요청 처리에 적합하게 **thread-safe하게 설계**되어 있으나, **개발자가 thread-unsafe 코드를 만들지 않는 것이 중요**합니다.
+</div>
+</details>
+
+<details>
+<summary>수많은 @Controller 를 DispatcherServlet은 어떻게 구분 할까요?</summary>
+<div>
+
+Spring MVC에서 `@Controller`가 여러 개 있을 때, **DispatcherServlet이 어떤 컨트롤러가 어떤 요청을 처리해야 하는지 정확히 구분**할 수 있는 이유는 다음과 같은 **핵심 메커니즘** 덕분입니다:
+
+---
+
+## ✅ 핵심 개념: DispatcherServlet은 `HandlerMapping`을 통해 컨트롤러를 찾는다
+
+### DispatcherServlet의 동작 요약:
+
+1. 클라이언트 요청 수신 (`/api/users`)
+2. 내부에서 등록된 **`HandlerMapping` 목록**을 통해 어떤 컨트롤러(`@Controller`)가 이 요청을 처리할지 탐색
+3. 해당 컨트롤러의 메서드(`@RequestMapping`)를 실행
+
+---
+
+## ✅ 그럼 어떻게 구분하나?
+
+Spring은 **애플리케이션 시작 시점에 모든 `@Controller`와 그 안의 `@RequestMapping`을 스캔하고 URL 매핑 정보를 등록**합니다.
+
+이 정보는 `RequestMappingHandlerMapping`이라는 빈이 관리하며, 다음과 같은 구조로 맵핑됩니다:
+
+```
+요청 URL -> 컨트롤러 클래스 & 메서드
+-------------------------------
+/api/users      -> UserController.getUsers()
+/api/orders     -> OrderController.getOrders()
+/admin/login    -> AdminController.login()
+
+```
+
+즉, DispatcherServlet은 요청이 들어올 때 **URL을 기준으로 HashMap처럼 등록된 매핑 테이블에서 일치하는 메서드를 빠르게 찾는 구조**입니다.
+
+---
+
+## 🔍 예시 코드
+
+```java
+@Controller
+@RequestMapping("/users")
+public class UserController {
+    @GetMapping
+    public String listUsers() {
+        // ...
+    }
+}
+
+```
+
+```java
+@Controller
+@RequestMapping("/orders")
+public class OrderController {
+    @GetMapping
+    public String listOrders() {
+        // ...
+    }
+}
+
+```
+
+- `/users` → `UserController.listUsers()`
+- `/orders` → `OrderController.listOrders()`
+
+➡ DispatcherServlet은 `HandlerMapping`을 통해 정확히 어떤 컨트롤러 메서드가 호출되어야 할지 판단합니다.
+
+---
+
+## 🔧 관련 내부 클래스 (Spring MVC 기준)
+
+| 구성요소 | 설명 |
+| --- | --- |
+| `RequestMappingHandlerMapping` | URL과 컨트롤러 메서드 매핑 정보 저장 |
+| `HandlerAdapter` | 매핑된 메서드를 실제로 호출하는 어댑터 |
+| `HandlerMethod` | 실제 실행할 컨트롤러 메서드 정보 (리플렉션 기반) |
+
+---
+
+## 🧠 결론
+
+- DispatcherServlet은 **직접 컨트롤러를 구분하지 않으며**, **HandlerMapping이 URL과 컨트롤러의 연결을 미리 만들어 둡니다**.
+- 이 매핑은 Spring이 애플리케이션 시작 시 자동으로 구성하고 캐싱합니다.
+- 따라서 수백 개의 `@Controller`가 있어도, URL을 기준으로 매우 빠르게 원하는 컨트롤러 메서드를 찾아 실행할 수 있습니다.
+
+필요하면 이 매핑 정보는 실행 중에도 확인할 수 있으며, 디버깅이나 API 문서 자동 생성에도 활용됩니다 (예: Swagger).
+</div>
+</details>

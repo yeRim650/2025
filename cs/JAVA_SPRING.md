@@ -4694,3 +4694,366 @@ public class OrderController {
 필요하면 이 매핑 정보는 실행 중에도 확인할 수 있으며, 디버깅이나 API 문서 자동 생성에도 활용됩니다 (예: Swagger).
 </div>
 </details>
+
+### JPA와 같은 ORM을 사용하는 이유가 무엇인가요?
+<details>
+<summary></summary>
+<div>
+
+**JPA와 같은 ORM(Object-Relational Mapping) 기술을 사용하는 이유**는 단순히 "DB랑 연결하려고"가 아니라, **객체 지향 프로그래밍 방식과 관계형 데이터베이스 사이의 불일치를 효과적으로 해결하고 개발 생산성을 높이기 위함**입니다.
+
+아래에 주요 이유들을 구체적으로 정리해드릴게요:
+
+---
+
+## ✅ 1. **객체 지향 프로그래밍과 관계형 DB 간의 불일치(임피던스 미스매치) 해소**
+
+- Java는 **클래스와 객체 기반**, DB는 **테이블과 레코드 기반**
+- 예: 객체 간의 **연관관계(1:N, N:M)**를 매핑하려면 SQL에서는 여러 JOIN이 필요하지만, JPA는 `@OneToMany`, `@ManyToOne` 같은 어노테이션으로 직관적으로 처리 가능
+- ORM은 이 간극을 자동으로 메워줍니다
+
+---
+
+## ✅ 2. **SQL을 직접 작성하지 않고 데이터 조작 가능 (생산성 향상)**
+
+- 전통적인 방식:
+    
+    ```sql
+    SELECT * FROM users WHERE id = 1;
+    
+    ```
+    
+- JPA:
+    
+    ```java
+    User user = userRepository.findById(1L).orElse(null);
+    
+    ```
+    
+- → SQL 작성, 결과 매핑, JDBC 연결 관리 등의 **반복 작업을 자동화**해줍니다.
+
+---
+
+## ✅ 3. **객체 중심의 코드 작성 (도메인 주도 설계와 궁합 좋음)**
+
+- 데이터가 흩어진 테이블 중심이 아니라, **객체 중심**으로 설계 가능
+- 비즈니스 로직도 엔티티 안에 자연스럽게 포함시킬 수 있어 **응집도 높은 코드** 작성 가능
+
+---
+
+## ✅ 4. **트랜잭션과 변경 감지(Dirty Checking) 지원**
+
+- 객체의 필드 값을 바꾸기만 하면, JPA가 트랜잭션 커밋 시 **변경 내용을 자동 감지**하고 DB에 반영
+- 별도로 `UPDATE` SQL을 작성할 필요가 없음
+
+```java
+user.setName("홍길동");
+// 커밋 시 자동으로 UPDATE users SET name = '홍길동' WHERE id = ?
+
+```
+
+---
+
+## ✅ 5. **캐시와 성능 최적화 기능 내장**
+
+- 1차 캐시 (영속성 컨텍스트)로 동일 객체에 대해 **중복 쿼리를 방지**
+- 지연 로딩(Lazy Loading), 페치 조인(Fetch Join), 배치 처리 등의 **고급 성능 최적화** 기능 제공
+
+---
+
+## ✅ 6. **DB 벤더 독립성 확보**
+
+- JPA는 ANSI SQL 기반으로 작성되므로, MySQL, PostgreSQL, Oracle 등 **DBMS를 교체할 때 코드 변경 최소화**
+- 물론 DB 고유 기능을 쓸 땐 예외가 있지만, 기본 CRUD나 쿼리는 대부분 호환
+
+---
+
+## ✅ 7. **유지보수 용이성**
+
+- SQL이 분산되지 않고 Repository나 Entity 중심으로 정리됨
+- 도메인 로직과 데이터 접근 코드가 **더 명확히 분리**됨
+
+---
+
+## 📌 요약: ORM (JPA)을 쓰는 핵심 이유
+
+| 목적 | 설명 |
+| --- | --- |
+| 생산성 | SQL 없이도 CRUD 처리 가능, 반복 작업 감소 |
+| 객체 지향 | 테이블보다 객체 중심으로 도메인 설계 |
+| 유지보수 | 코드 정리 및 관리 쉬움 |
+| 성능 최적화 | 캐싱, 지연 로딩, 페치 조인 등 지원 |
+| 트랜잭션 관리 | 자동 변경 감지 및 커밋 처리 |
+| DB 독립성 | 여러 DBMS에 쉽게 이식 가능 |
+
+---
+
+## ❗ 언제 ORM이 불리할 수 있나?
+
+| 상황 | 설명 |
+| --- | --- |
+| 복잡한 SQL 튜닝 필요 | ORM이 생성하는 SQL이 비효율적일 수 있음 |
+| 대량 데이터 일괄 처리 | JDBC가 더 나은 경우도 있음 (벌크 인서트 등) |
+| 성능이 극도로 중요한 시스템 | ORM이 숨기는 쿼리 동작이 오히려 문제가 될 수 있음 |
+
+→ 이런 경우는 **JPA + Native SQL 병행** 또는 **MyBatis 등과의 조합 사용**을 고려합니다.
+</div>
+</details>
+
+<details>
+<summary>영속성은 어떤 기능을 하나요? 이게 진짜 성능 향상에 큰 도움이 되나요?</summary>
+<div>
+
+JPA에서 말하는 **영속성(Persistence)**은 단순히 "DB에 저장된다"는 의미가 아니라, **엔티티가 JPA에 의해 관리되는 상태**, 그리고 그 상태에서 제공되는 **여러 핵심 기능(캐시, 변경 감지 등)**을 의미합니다.
+
+이 기능들이 실제로 **성능 향상뿐 아니라 코드 품질, 유지보수성에도 큰 도움**을 줍니다.
+
+---
+
+## ✅ 영속성(Persistence)의 정의
+
+> JPA에서 "영속성"이란, 엔티티 객체가 EntityManager의 관리 대상이 되는 상태를 의미합니다.
+> 
+
+즉, JPA가 이 객체를 추적하고 변경 사항을 감지하며, 필요 시 DB와 자동으로 동기화시킵니다.
+
+---
+
+## 🎯 영속성이 제공하는 주요 기능
+
+### 1. **1차 캐시 (영속성 컨텍스트 캐시)**
+
+- 같은 트랜잭션 내에서 같은 엔티티를 여러 번 조회해도 **DB에서 다시 조회하지 않고 캐시된 객체를 반환**
+
+```java
+User user1 = em.find(User.class, 1L);
+User user2 = em.find(User.class, 1L); // 같은 트랜잭션이면 쿼리 X, 캐시 반환
+
+```
+
+✅ **성능 향상 포인트 #1**: DB 조회 횟수 감소 → 네트워크 I/O 줄어듦
+
+---
+
+### 2. **변경 감지 (Dirty Checking)**
+
+- 영속 상태의 엔티티는 **필드 값을 변경하면 자동으로 UPDATE 쿼리 생성**
+
+```java
+user.setName("홍길동"); // SQL 작성 안 해도, 트랜잭션 커밋 시 자동 UPDATE
+
+```
+
+✅ **성능 향상 포인트 #2**: 개발자가 직접 update 쿼리 관리하지 않아도 됨
+
+✅ **유지보수성 향상**: 실수 줄어듦, 코드 간결함
+
+---
+
+### 3. **쓰기 지연 (Write-Behind)**
+
+- INSERT 쿼리들은 모아서 **트랜잭션 커밋 시 한꺼번에 전송**
+
+```java
+em.persist(user1);
+em.persist(user2);
+// 실제 INSERT는 commit 시점에 한꺼번에 발생
+
+```
+
+✅ **성능 향상 포인트 #3**: DB I/O 최소화, 배치 성능
+
+---
+
+### 4. **트랜잭션과 자동 동기화**
+
+- 영속성 컨텍스트는 트랜잭션 범위 내에서 동작하며, 커밋 시점에 DB와 자동 동기화
+    
+    ✅ 데이터 일관성 보장
+    
+    ✅ 개발자가 직접 DB 상태를 조작할 필요 없음
+    
+
+---
+
+## ⚠️ 반대로, 영속성이 성능에 나쁜 영향을 줄 수 있는 경우
+
+| 상황 | 문제 |
+| --- | --- |
+| 너무 많은 엔티티를 영속 상태로 유지 | 메모리 과다 사용, OOM 위험 |
+| 연관 관계가 많을 때 지연 로딩 → N+1 문제 | 쿼리가 예상보다 많이 발생할 수 있음 |
+| 대량 변경 작업 시 | Dirty Checking보다 벌크 쿼리가 더 빠름 |
+
+➡ 이런 경우는 **영속성 컨텍스트를 적절히 비우거나**, **JPQL 벌크 연산** 또는 **Native SQL** 사용으로 보완합니다.
+
+---
+
+## 🧠 결론
+
+| 질문 | 답변 |
+| --- | --- |
+| 영속성은 무슨 기능을 하나요? | 캐싱, 변경감지, 쓰기지연, 자동 동기화 등 |
+| 진짜 성능에 도움 되나요? | **네, 적절히 사용하면 큰 성능 향상**이 있지만, 남용 시 오히려 성능 저하 가능성도 있습니다. |
+| 언제 효과적인가요? | 트랜잭션 내 반복 조회, 트랜잭션 단위 변경 처리, 일관성 유지가 필요한 비즈니스 로직 등 |
+</div>
+</details>
+
+<details>
+<summary>N + 1 문제에 대해 설명해 주세요.</summary>
+<div>
+**N+1 문제**는 JPA를 사용할 때 자주 마주치는 **성능 병목 문제** 중 하나이며, 특히 **연관관계가 있는 엔티티들을 조회할 때** 잘못된 쿼리 전략 때문에 발생합니다.
+
+---
+
+## ✅ N+1 문제란?
+
+> **하나의 쿼리(1)**로 데이터를 조회했는데, 연관된 데이터를 조회하기 위해 추가로 N개의 쿼리가 발생하는 문제입니다.
+> 
+> 
+> 즉, 총 **1 + N 개의 쿼리**가 발생해서 **불필요하게 많은 SQL이 실행되는 현상**입니다.
+> 
+
+---
+
+## 📌 예제 상황
+
+### 도메인 예시
+
+```java
+@Entity
+public class Team {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+
+    @OneToMany(mappedBy = "team")
+    private List<Member> members;
+}
+
+@Entity
+public class Member {
+    @Id @GeneratedValue
+    private Long id;
+
+    private String username;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Team team;
+}
+
+```
+
+---
+
+### 🔸 문제 발생 코드
+
+```java
+List<Member> members = em.createQuery("SELECT m FROM Member m", Member.class).getResultList();
+
+for (Member member : members) {
+    System.out.println(member.getTeam().getName()); // LAZY 로딩 → team 조회 쿼리 발생
+}
+
+```
+
+---
+
+### 🔍 실제 실행 쿼리
+
+1. **첫 번째 쿼리 (1)**
+
+```sql
+SELECT * FROM member;  -- 모든 멤버 조회
+
+```
+
+1. **그 후 N개의 쿼리**
+
+```sql
+SELECT * FROM team WHERE id = ?;  -- 각 member마다 team을 조회
+
+```
+
+→ 만약 `members`가 100명이라면?
+
+- **총 1 + 100 = 101개의 쿼리**가 발생합니다 ❗
+    
+    ➡ 이것이 바로 **N+1 문제**입니다.
+    
+
+---
+
+## ⚠️ 왜 문제가 되는가?
+
+- 쿼리 수가 **데이터 수에 비례하여 증가** → 성능 저하
+- **DB 부하 증가**, **네트워크 비용 증가**
+- 추적이 어려움 (실제 코드는 한 줄인데 쿼리는 N개 나감)
+
+---
+
+## ✅ 해결 방법
+
+### 1. **Fetch Join 사용 (JPQL)**
+
+```java
+List<Member> members = em.createQuery(
+    "SELECT m FROM Member m JOIN FETCH m.team", Member.class)
+    .getResultList();
+
+```
+
+🔹 결과:
+
+- member + team을 한 번에 조회하는 **조인 쿼리** 1개로 해결
+
+```sql
+SELECT m.*, t.* FROM member m
+JOIN team t ON m.team_id = t.id;
+
+```
+
+---
+
+### 2. **`@EntityGraph` 사용 (Spring Data JPA)**
+
+```java
+@EntityGraph(attributePaths = "team")
+List<Member> findAll();  // Spring Data JPA에서 자동 fetch join 효과
+
+```
+
+---
+
+### 3. **Batch Size 설정 (LAZY + 일괄 조회 전략)**
+
+```
+# application.properties
+spring.jpa.properties.hibernate.default_batch_fetch_size=100
+
+```
+
+→ N개의 쿼리를 여러 개의 IN 쿼리로 묶어서 **쿼리 수를 획기적으로 줄임**
+
+---
+
+## 📝 요약
+
+| 항목 | 설명 |
+| --- | --- |
+| 정의 | 연관된 엔티티를 조회할 때 1개의 메인 쿼리 + N개의 추가 쿼리가 실행되는 현상 |
+| 문제점 | 쿼리 수 증가, 성능 저하, 추적 어려움 |
+| 원인 | 지연 로딩(LAZY) + 반복 접근 |
+| 해결책 | Fetch Join, EntityGraph, Batch Fetch Size |
+
+---
+
+### 💡 실무 팁:
+
+- 항상 연관 엔티티를 사용하는 패턴이 있다면, **Fetch Join을 적극 사용**
+- **불필요한 Fetch Join은 성능 저하 유발** → 필요한 경우에만 사용
+- 쿼리 로그를 보고 `select N` 패턴이 보이면 의심해볼 것
+
+---
+</div>
+</details>

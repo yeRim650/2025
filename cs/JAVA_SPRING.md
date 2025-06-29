@@ -5231,3 +5231,272 @@ public class UserService {
 원하는 방향이 **성능 우선 or 안정성 우선**인지에 따라 결정하는 것이 좋습니다.
 </div>
 </details>
+
+### Java 에서 Annotation 은 어떤 기능을 하나요?
+<details>
+<summary></summary>
+<div>
+
+Java에서 **Annotation(애너테이션)**은 코드에 **메타데이터(metadata)**를 추가하는 기능입니다. 즉, **"이 코드에 어떤 의미가 있다"**는 정보를 **컴파일러, 개발 도구, 프레임워크 등에게 전달**합니다.
+
+---
+
+## ✅ 한 줄 정의
+
+> Annotation은 코드에 붙이는 설명 태그로, 특정 처리(행동)를 유도하는 도구입니다.
+> 
+
+---
+
+## ✅ Annotation의 주요 용도
+
+| 용도 | 예시 | 설명 |
+| --- | --- | --- |
+| **컴파일러 지시** | `@Override`, `@SuppressWarnings` | 컴파일 시 경고/에러 제어 |
+| **코드 문서화** | `@Deprecated`, `@param`, `@return` | JavaDoc 생성 등에 사용 |
+| **프레임워크 제어** | `@Component`, `@Autowired`, `@Transactional` | Spring 같은 프레임워크가 동작을 제어 |
+| **런타임 처리** | `@Retention(RUNTIME)`이 붙은 커스텀 애너테이션 | 리플렉션 등을 통해 런타임에 읽어서 동작 |
+
+---
+
+## ✅ 자주 쓰는 Annotation 예시
+
+```java
+@Override
+public String toString() {
+    return "Hello";
+}
+
+```
+
+```java
+@SpringBootApplication
+public class MyApp { ... }
+
+```
+
+```java
+@Transactional(readOnly = true)
+public List<User> getUsers() { ... }
+
+```
+
+---
+
+## ✅ Annotation의 구조 (커스텀도 가능)
+
+```java
+@Retention(RetentionPolicy.RUNTIME) // 언제까지 유지할지
+@Target(ElementType.METHOD)         // 어디에 붙일 수 있는지
+public @interface MyAnnotation {
+    String value();
+    int count() default 1;
+}
+
+```
+
+사용:
+
+```java
+@MyAnnotation(value = "hello", count = 3)
+public void doSomething() { ... }
+
+```
+
+---
+
+## ✅ 요약
+
+| 항목 | 설명 |
+| --- | --- |
+| 정체 | 코드에 부착하는 메타데이터 |
+| 역할 | 컴파일 지시, 문서화, 런타임 로직 제어 |
+| 대표 사용처 | Spring, JPA, 테스트, 커스텀 애너테이션 등 |
+| 장점 | 코드 간결화, 선언적 프로그래밍, 자동 처리 |
+
+필요한 동작을 **코드로 직접 구현하지 않고, 선언적으로 지정**할 수 있게 해주는 것이 Java 애너테이션의 핵심입니다.
+</div>
+</details>
+
+<details>
+<summary>별 기능이 없는 것 같은데, 어떻게 Spring 에서는 Annotation 이 그렇게 많은 기능을 하는 걸까요?</summary>
+<div>
+
+표면적으로는 **Annotation이 단지 "태그"처럼 보이지만**, Spring이 이들을 **리플렉션과 프록시, 바이트코드 조작** 등으로 해석해서 **동작을 주입**하는 구조로 되어 있기 때문에 그렇게 강력해지는 것입니다.
+
+---
+
+## ✅ 핵심 개념: Annotation은 "기능"이 아니라 "신호"입니다
+
+- 애너테이션 자체는 **아무 기능도 하지 않습니다.**
+- 하지만 Spring은 특정 애너테이션을 보고:
+    
+    > "이걸 붙였으니, 내가 알아서 처리할게!"
+    > 
+    > 
+    > 라고 인식하고, **자동으로 코드 뒤에서 동작을 붙여줍니다.**
+    > 
+
+---
+
+## ✅ 예시 1: `@Transactional`
+
+```java
+@Transactional
+public void saveUser() { ... }
+
+```
+
+- *Spring은 런타임에 이 메서드를 감싸는 프록시 객체(proxy)**를 만들어서
+    1. 트랜잭션 시작
+    2. 메서드 실행
+    3. 예외 발생 시 롤백, 정상 종료 시 커밋
+        
+        을 자동으로 처리합니다.
+        
+
+---
+
+## ✅ 예시 2: `@Autowired`
+
+```java
+@Autowired
+private UserRepository userRepository;
+
+```
+
+- Spring이 **빈(Bean) 스캐닝** 중 `@Autowired`가 붙은 필드를 찾아
+    - 적절한 타입의 Bean을 주입(injection)합니다.
+
+---
+
+## ✅ 내부 원리 요약
+
+| 기술 | 설명 |
+| --- | --- |
+| **리플렉션(Reflection)** | 런타임에 클래스/메서드/필드의 애너테이션을 읽고 분석 |
+| **프록시(Proxy)** | 원래 메서드를 감싸는 가짜 객체를 만들어 가로채기 |
+| **AOP (Aspect Oriented Programming)** | 공통 관심사(예: 로깅, 트랜잭션)를 주입 |
+| **빈 스캐닝** | `@Component`, `@Service` 등으로 Bean 등록 자동화 |
+| **Annotation Processor** | 컴파일 시 애너테이션 처리 (Lombok, MapStruct 등) |
+
+---
+
+## ✅ 요약
+
+- Annotation = "메타데이터(지시문)"일 뿐 → **기능은 프레임워크가 처리**
+- Spring은 **리플렉션 + AOP + 프록시 + 컨테이너**를 조합해
+    
+    > "Annotation을 보고 자동으로 코드를 실행"
+    > 
+- 결국, **Annotation이 기능을 하는 게 아니라, Spring이 Annotation을 해석해서 기능을 주입**하는 것입니다.
+</div>
+</details>
+<details>
+<summary>Lombok의 @Data를 잘 사용하지 않는 이유는 무엇일까요?</summary>
+<div>
+
+Lombok의 `@Data`는 매우 편리하지만, **실무에서는 잘 사용하지 않거나 지양하는 경우가 많습니다.** 이유는 다음과 같습니다:
+
+---
+
+## ✅ `@Data`가 하는 일
+
+```java
+@Data
+public class User {
+    private String name;
+    private int age;
+}
+
+```
+
+다음 모든 기능을 자동으로 생성합니다:
+
+- `@Getter`
+- `@Setter`
+- `@ToString`
+- `@EqualsAndHashCode`
+- `@RequiredArgsConstructor` (final 필드나 `@NonNull` 필드 대상)
+
+---
+
+## ❗️문제가 되는 이유
+
+### 1. **불필요한 Setter 생성 → 객체 불변성 깨짐**
+
+- 모든 필드에 대해 `setter`가 생성되므로 **데이터 변경이 자유로워짐**
+- → DDD, 불변 객체 설계, 객체 캡슐화 원칙에 어긋남
+
+```java
+@Data // → 모든 필드에 public setter 만들어버림
+
+```
+
+---
+
+### 2. **Equals/HashCode 문제**
+
+- 모든 필드를 기준으로 `equals`와 `hashCode`를 만드는데,
+    - 연관관계 필드 (예: JPA의 양방향 관계)가 포함되면 **무한 루프 발생 가능**
+
+```java
+@OneToMany(mappedBy = "user")
+private List<Order> orders; // → equals/hashCode 대상이 되면 문제
+
+```
+
+---
+
+### 3. **ToString 순환 참조 문제**
+
+- `@ToString`도 모든 필드를 포함하므로,
+    - 양방향 연관관계일 경우 **StackOverflowError** 발생 가능
+
+---
+
+### 4. **의도가 불분명한 클래스**
+
+- `@Data`를 붙이면:
+    - 이 클래스가 DTO인지, 엔티티인지, 서비스용 객체인지 구분이 안 됨
+- 팀원이나 유지보수자 입장에서 **설계 의도를 파악하기 어려움**
+
+---
+
+### 5. **테스트 및 유지보수 어려움**
+
+- 명시적으로 생성자, getter/setter를 만들지 않으면 IDE나 리팩터링 도구가 제대로 추적하지 못하거나, 실수 유발
+
+---
+
+## ✅ 실무에서는 어떻게 쓰나?
+
+| 용도 | 추천 방법 |
+| --- | --- |
+| DTO (Request, Response) | `@Getter`, `@Setter` 정도만 제한적으로 사용 |
+| Entity | 명시적으로 작성 (불변성 유지) 또는 `@Getter`만 사용 |
+| VO/불변 객체 | `@Value` (immutable object용 Lombok 어노테이션) |
+| 테스트용 임시 클래스 | `@Data` 가능 (제한적으로) |
+
+---
+
+## ✅ 요약
+
+| 이유 | 설명 |
+| --- | --- |
+| 캡슐화 침해 | 모든 필드에 setter 생성 |
+| equals/hashCode/ToString 문제 | 순환 참조 및 퍼포먼스 문제 |
+| 의도 불명확 | 이 객체의 역할이 모호해짐 |
+| 유지보수 어려움 | 자동 생성된 메서드가 코드 가독성 및 추적성 낮춤 |
+
+---
+
+### 👉 결론:
+
+> @Data는 편리하지만, **"모든 기능을 다 켜는 만능 버튼"**이라 위험할 수 있습니다.
+> 
+> 
+> 실무에서는 **의도에 따라 개별 어노테이션(`@Getter`, `@ToString(exclude=...)` 등)을 선택적으로 사용**하는 것이 권장됩니다.
+>
+</div>
+</details>
